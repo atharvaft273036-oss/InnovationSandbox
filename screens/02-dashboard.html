@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dashboard - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<div class="app" data-screen="dashboard" data-title="Dashboard" data-section="Practice">
+  <aside class="sidebar" id="cg-sidebar"></aside>
+  <div class="main">
+    <header class="topbar" id="cg-topbar"></header>
+    <main class="content">
+
+      <div id="coach" style="margin-bottom:20px"></div>
+
+      <div class="page-head">
+        <div class="page-head__text">
+          <h1 class="t-h1">Good evening, Karthik</h1>
+          <p class="t-body muted">Your practice window opens in 1 hour 12 minutes. Eleven Advanced Consulting peers are online tonight.</p>
+        </div>
+        <div class="page-head__actions">
+          <a class="btn" href="10-case-library.html">Browse cases</a>
+          <a class="btn btn--primary" href="03-matching-queue.html" id="find-btn">
+            <span id="find-icon"></span> Find a case partner
+          </a>
+        </div>
+      </div>
+
+      <div class="grid grid--4" style="margin-bottom:20px" id="stats"></div>
+
+      <div class="grid" style="grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);align-items:start">
+
+        <div class="stack">
+          <section class="card" id="trend-card">
+            <div class="card__head">
+              <h2 class="t-h2">Rubric trend</h2>
+              <span class="t-xs subtle">Average across all six dimensions, last six graded sessions</span>
+              <span class="badge badge--ok" id="trend-badge"></span>
+            </div>
+            <div class="card__body" id="trend-body"></div>
+            <div class="card__foot" id="trend-foot"></div>
+          </section>
+
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Recent sessions</h2>
+              <a class="btn btn--ghost btn--sm" href="08-feedback-received.html">All feedback</a>
+            </div>
+            <div class="card__body card__body--flush">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width:62px">Date</th>
+                    <th>Case</th>
+                    <th style="width:132px">Partner</th>
+                    <th style="width:92px">Your role</th>
+                    <th style="width:76px" class="num">Score</th>
+                    <th style="width:52px"></th>
+                  </tr>
+                </thead>
+                <tbody id="recent-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="card" id="next-card"></section>
+
+          <section class="card">
+            <div class="card__head"><h2 class="t-h2">Credit rules</h2></div>
+            <div class="card__body" style="padding-top:12px;padding-bottom:12px">
+              <ul class="stack--sm" style="display:flex;flex-direction:column" id="rules"></ul>
+            </div>
+            <div class="card__foot">
+              <a class="btn btn--ghost btn--sm" href="09-credit-ledger.html" style="padding-left:0">View full ledger</a>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Syndicate Freeze Pass</h2>
+              <span class="badge badge--ok" id="freeze-badge">Available</span>
+            </div>
+            <div class="card__body">
+              <p class="t-sm muted">One penalty-free reschedule every 14 days, with at least 90 minutes notice. Last used 14 Sep 2026.</p>
+              <div class="bar" style="margin-top:14px"><div class="bar__fill bar__fill--ok" style="width:100%"></div></div>
+              <div class="row row--between" style="margin-top:8px">
+                <span class="t-xs subtle">Cycle resets 28 Sep</span>
+                <button class="btn btn--sm" id="freeze-btn" type="button">Use on a session</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon, D = CaseGrid.data;
+  document.getElementById('find-icon').innerHTML = icon('users', 16);
+
+  /* ---- coach strip: the whole product model in three lines ---- */
+  (function coach() {
+    var host = document.getElementById('coach');
+    var steps = [
+      { t: 'Match on track and tier', s: 'Queue inside your practice window. Typical wait is under two minutes.' },
+      { t: 'Run 45 minutes, then swap', s: 'One of you interviews, then you trade chairs on a second case.' },
+      { t: 'Score before anyone leaves', s: 'Six dimensions and two comments. The session stays locked until it is in.' }
+    ];
+    var cols = '';
+    for (var i = 0; i < steps.length; i++) {
+      cols += '<div class="coach__step"><span class="coach__n">' + (i + 1) + '</span>' +
+        '<span><span class="t-sm" style="font-weight:600;display:block">' + steps[i].t + '</span>' +
+        '<span class="t-xs subtle">' + steps[i].s + '</span></span></div>';
+    }
+    host.innerHTML = '<div class="coach">' +
+      '<div style="min-width:170px;flex:none">' +
+      '<div class="row" style="gap:8px"><span style="color:var(--accent-text)">' + icon('sparkle', 17) + '</span>' +
+      '<span class="t-h3">How a session works</span></div>' +
+      '<p class="t-xs subtle" style="margin-top:4px">Three beats, every time.</p></div>' +
+      '<div class="coach__steps">' + cols + '</div>' +
+      '<button class="btn btn--ghost btn--sm" type="button" id="coach-x" style="margin-left:auto;flex:none" aria-label="Dismiss">' +
+      icon('x', 15) + 'Got it</button></div>';
+
+    document.getElementById('coach-x').addEventListener('click', function () {
+      host.innerHTML = '';
+      host.style.marginBottom = '0';
+      CaseGrid.toast('Hidden for now', null, 'Press / at any time to jump anywhere in the app.');
+    });
+  })();
+
+  /* ---- loading skeletons while the fake call is in flight ---- */
+  var stats = document.getElementById('stats');
+  var skeleton = '';
+  for (var s = 0; s < 4; s++) {
+    skeleton += '<div class="card stat"><div class="sk sk--line" style="width:40%"></div>' +
+      '<div class="sk" style="height:28px;width:64%;margin-top:14px"></div>' +
+      '<div class="sk sk--line" style="width:78%;margin-top:12px"></div></div>';
+  }
+  stats.innerHTML = skeleton;
+  document.getElementById('trend-body').innerHTML = '<div class="sk sk--block" style="height:150px"></div>';
+  document.getElementById('recent-body').innerHTML =
+    '<tr><td colspan="6" style="padding:20px 20px"><div class="sk sk--line" style="width:92%"></div>' +
+    '<div class="sk sk--line" style="width:74%;margin-top:12px"></div>' +
+    '<div class="sk sk--line" style="width:84%;margin-top:12px"></div></td></tr>';
+  document.getElementById('next-card').innerHTML =
+    '<div class="card__body"><div class="sk sk--title"></div><div class="sk sk--block" style="margin-top:16px"></div></div>';
+
+  FakeAPI.getDashboard().then(function (res) {
+    renderStats(res);
+    renderTrend(res.trend);
+    renderRecent(res.recent);
+    renderNext(res.next);
+    renderRules();
+  });
+
+  function renderStats(res) {
+    var u = res.user;
+    stats.innerHTML =
+      tile('coin', 'Credits', u.credits, '', 'Enough for ' + u.credits + ' sessions as candidate', null) +
+      tile('shield', 'Reliability', u.reliability + '%', '', '19 of your last 20 sessions attended', 'ok') +
+      tile('trend', 'Tier', u.tier, '', u.casesDone + ' cases completed · next tier at 30', null) +
+      tile('clock', 'Next session', '11:00', ' PM', 'Tonight with Adeeba Kishwar', null);
+    stats.classList.add('fade-in');
+
+    function tile(ic, label, value, unit, meta, tone) {
+      return '<div class="card stat">' +
+        '<div class="stat__label">' + icon(ic, 15) + '<span class="t-label" style="color:inherit">' + label + '</span></div>' +
+        '<div class="stat__value">' + value + (unit ? '<small>' + unit + '</small>' : '') +
+        (tone === 'ok' ? '<span class="delta delta--up" style="margin-left:auto">' + icon('arrowUp', 13) + '2 pts</span>' : '') +
+        '</div><div class="stat__meta">' + meta + '</div></div>';
+    }
+  }
+
+  function renderTrend(trend) {
+    document.getElementById('trend-body').innerHTML = CaseGrid.lineChart(trend, { height: 158 });
+    document.getElementById('trend-badge').innerHTML = icon('arrowUp', 13) + '+0.9 since 01 Sep';
+    document.getElementById('trend-foot').innerHTML =
+      icon('info', 15) + '<span>Synthesis is the one dimension that has not moved. It sat at 3 in four of the last five sessions.</span>' +
+      '<a class="btn btn--ghost btn--sm" href="08-feedback-received.html" style="margin-left:auto">Open breakdown</a>';
+  }
+
+  function renderRecent(rows) {
+    var out = '';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var score = r.avg == null
+        ? '<span class="badge">You graded</span>'
+        : '<b class="tnum" style="font-size:14px">' + r.avg.toFixed(1) + '</b><span class="subtle"> / 5</span>';
+      out += '<tr>' +
+        '<td class="subtle nowrap">' + r.date + '</td>' +
+        '<td class="table__title">' + r.caseTitle + '</td>' +
+        '<td class="muted">' + r.partner + '</td>' +
+        '<td><span class="badge' + (r.role === 'Interviewer' ? ' badge--accent' : '') + '">' + r.role + '</span></td>' +
+        '<td class="num">' + score + '</td>' +
+        '<td class="num"><a class="btn btn--ghost btn--sm" href="08-feedback-received.html" aria-label="Open ' + r.caseTitle + '">' + icon('chevronRight', 15) + '</a></td>' +
+        '</tr>';
+    }
+    document.getElementById('recent-body').innerHTML = out;
+  }
+
+  function renderNext(n) {
+    function row(ic, text) {
+      return '<div class="row" style="gap:10px;padding:5px 0;align-items:flex-start">' +
+        '<span style="color:var(--text-subtle);margin-top:1px">' + icon(ic, 15) + '</span>' +
+        '<span class="t-sm">' + text + '</span></div>';
+    }
+
+    function miniFlow() {
+      var out = '<div class="row" style="gap:6px;flex-wrap:wrap">';
+      for (var i = 0; i < CaseGrid.flow.length; i++) {
+        var f = CaseGrid.flow[i];
+        var state = i === 0 ? 'done' : (i === 1 ? 'active' : 'todo');
+        out += '<a class="flowstep flowstep--' + state + '" href="' + f.href + '" title="' + f.hint + '" ' +
+          'style="font-size:11.5px;padding:3px 9px 3px 3px">' +
+          '<span class="flowstep__n" style="width:16px;height:16px;font-size:9px">' +
+          (state === 'done' ? icon('checkSm', 10) : (i + 1)) + '</span>' + f.label + '</a>';
+      }
+      return out + '</div>';
+    }
+
+    document.getElementById('next-card').innerHTML =
+      '<div class="card__head"><h2 class="t-h2">Next session</h2>' +
+      '<span class="badge badge--ok">' + icon('checkSm', 12) + n.status + '</span></div>' +
+      '<div class="card__body">' +
+      '<div class="row" style="gap:12px"><span class="avatar avatar--lg avatar--soft">AK</span>' +
+      '<div><div style="font-weight:600">' + n.partner + '</div>' +
+      '<div class="t-xs subtle">Advanced · Consulting · 97% reliability</div></div></div>' +
+      '<div class="hr hr--tight"></div>' +
+      row('calendar', n.when) + row('book', n.caseTitle) + row('users', n.role + ' · 45 minutes each way') +
+
+      /* Where tonight sits in the four beats, before you join. */
+      '<div style="margin-top:16px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface-alt)">' +
+      '<div class="t-label" style="margin-bottom:8px">What happens next</div>' + miniFlow() + '</div>' +
+
+      '<div class="row" style="gap:8px;margin-top:18px">' +
+      '<a class="btn btn--primary" style="flex:1" href="06-split-view.html">' + icon('play', 15) + 'Join session</a>' +
+      '<button class="btn" type="button" id="resched">Reschedule</button></div>' +
+      '<p class="t-xs subtle" style="margin-top:10px;display:flex;gap:6px">' + icon('alert', 13) +
+      '<span>Cancelling after 10:00 PM costs 2 credits and lowers your reliability score.</span></p>' +
+      '</div>';
+
+    document.getElementById('resched').addEventListener('click', function () {
+      var b = this;
+      b.disabled = true;
+      b.innerHTML = '<span class="spinner"></span>Checking';
+      FakeAPI.useFreezePass().then(function () {
+        CaseGrid.toast('Freeze Pass applied', 'ok',
+          'Tonight moved with no credit cost and no hit to reliability. Next pass 28 Sep.');
+        b.outerHTML = '<span class="badge badge--accent" style="height:34px;padding:0 12px">Freeze Pass applied</span>';
+        var badge = document.getElementById('freeze-badge');
+        badge.className = 'badge';
+        badge.textContent = 'Used · resets 28 Sep';
+        document.querySelector('#freeze-btn').disabled = true;
+        document.querySelector('#freeze-btn').textContent = 'Used this cycle';
+        document.querySelector('.bar__fill--ok').style.width = '0%';
+      });
+    });
+  }
+
+  function renderRules() {
+    var out = '';
+    for (var i = 0; i < D.creditRules.length; i++) {
+      var r = D.creditRules[i];
+      var colour = r.tone === 'pos' ? 'var(--ok)' : (r.tone === 'neutral' ? 'var(--text-subtle)' : 'var(--danger)');
+      out += '<li class="row" style="gap:10px;padding:7px 0;align-items:flex-start">' +
+        '<span class="tnum" style="width:30px;flex:none;font-weight:650;color:' + colour + '">' + r.delta + '</span>' +
+        '<span class="t-sm"><span>' + r.label + '</span>' +
+        (r.note ? '<span class="t-xs subtle" style="display:block">' + r.note + '</span>' : '') + '</span></li>';
+    }
+    document.getElementById('rules').innerHTML = out;
+  }
+
+  document.getElementById('freeze-btn').addEventListener('click', function () {
+    var r = document.getElementById('resched');
+    if (r && !r.disabled) { r.click(); }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live case session - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  /* The hero screenshot: two panes, one seam, nothing else competing. */
+  .terminal__body { gap: 0; }
+  .seam { width: 1px; background: var(--border); position: relative; flex: none; }
+  .seam__grip {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 14px; height: 40px; border-radius: var(--r-full);
+    background: var(--surface); border: 1px solid var(--border);
+    display: grid; place-items: center; color: var(--n-400); box-shadow: var(--sh-xs);
+  }
+  .seam__grip::before { content: ""; width: 2px; height: 14px; border-left: 1px dotted var(--n-400); border-right: 1px dotted var(--n-400); }
+  .status-strip {
+    flex: none; height: 32px; background: #0a0a0e; color: var(--n-500);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 18px; padding: 0 20px; font-size: 11px;
+  }
+  .status-strip b { color: var(--n-800); font-weight: 620; }
+</style>
+</head>
+<body data-flow="case">
+<div class="terminal">
+  <header class="terminal__bar" id="term-bar"></header>
+  <div id="cg-flow" data-terminal="true"></div>
+
+  <div class="terminal__body">
+    <div class="pane" data-pane="interviewer"></div>
+    <div class="seam" aria-hidden="true"><span class="seam__grip"></span></div>
+    <div class="pane" data-pane="candidate"></div>
+  </div>
+
+  <div class="status-strip">
+    <span id="s1"></span>
+    <span>Connection <b>stable</b> &middot; 38 ms</span>
+    <span>Audio <b>on</b></span>
+    <span>Exhibits released <b id="rel-count">1 of 2</b></span>
+    <span>Triggers used <b id="trig-count">0 of 3</b></span>
+    <span style="margin-left:auto">Rubric <b style="color:#f7c873">not submitted</b></span>
+    <span>Session id <b>cg-2609-1123</b></span>
+  </div>
+
+  <div id="exit-note" class="hidden" style="position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:60">
+    <div class="callout callout--danger" style="box-shadow:var(--sh-lg);background:var(--surface);max-width:520px">
+      <span id="exit-icon"></span>
+      <div><strong>You cannot leave without submitting the rubric</strong>
+      <span class="muted">Adeeba gets no feedback if you close this session now, and it is logged as incomplete for both of you.</span>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <a class="btn btn--primary btn--sm" href="07-rubric-submission.html">Open rubric</a>
+        <button class="btn btn--sm" type="button" id="exit-dismiss">Back to the case</button>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="../terminal.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon;
+  CaseGridTerminal.mount({ phase: 'Half 1 of 2 · Karthik interviewing, Adeeba answering' });
+
+  document.getElementById('s1').innerHTML = '<span class="row" style="gap:6px"><span class="dot dot--live"></span>Live since 11:00 PM</span>';
+  document.getElementById('exit-icon').innerHTML = icon('alert', 18);
+  document.getElementById('exit-dismiss').addEventListener('click', function () {
+    document.getElementById('exit-note').classList.add('hidden');
+  });
+
+  /* Keep the status strip honest about what the left pane has done. */
+  function sync() {
+    var st = CaseGridTerminal.state;
+    var released = CASEGRID_DATA.activeCase.exhibits.filter(function (e) { return e.released; }).length;
+    var used = 0;
+    for (var k in st.triggersUsed) { if (st.triggersUsed[k]) { used++; } }
+    document.getElementById('rel-count').textContent = released + ' of 2';
+    document.getElementById('trig-count').textContent = used + ' of 3';
+  }
+  setInterval(sync, 400);
+  sync();
+})();
+</script>
+</body>
+</html>

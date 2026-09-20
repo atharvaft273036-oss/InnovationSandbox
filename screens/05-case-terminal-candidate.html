@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Case terminal - Candidate - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body data-flow="case">
+<div class="terminal">
+  <header class="terminal__bar" id="term-bar"></header>
+  <div id="cg-flow" data-terminal="true"></div>
+  <div class="terminal__body">
+    <div class="pane" data-pane="candidate"></div>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="../terminal.js"></script>
+<script>
+(function () {
+  'use strict';
+  var pane = document.querySelector('[data-pane]');
+  pane.style.maxWidth = '860px';
+  pane.style.margin = '0 auto';
+  pane.style.borderLeft = '1px solid var(--border)';
+  pane.style.borderRight = '1px solid var(--border)';
+
+  CaseGridTerminal.mount({ phase: 'Half 1 of 2 · Adeeba is interviewing you' });
+})();
+</script>
+</body>
+</html>

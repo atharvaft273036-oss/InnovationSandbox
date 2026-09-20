@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Case terminal - Interviewer - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body data-flow="case">
+<div class="terminal">
+  <header class="terminal__bar" id="term-bar"></header>
+  <div id="cg-flow" data-terminal="true"></div>
+  <div class="terminal__body">
+    <div class="pane" data-pane="interviewer" style="max-width:none"></div>
+  </div>
+  <div id="exit-note" class="hidden" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60">
+    <div class="callout callout--danger" style="box-shadow:var(--sh-lg);background:var(--surface);max-width:520px">
+      <span id="exit-icon"></span>
+      <div><strong>You cannot leave without submitting the rubric</strong>
+      <span class="muted">Adeeba gets no feedback if you close this pane now, and the session is logged as incomplete for both of you. It takes about 90 seconds.</span>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <a class="btn btn--primary btn--sm" href="07-rubric-submission.html">Open rubric</a>
+        <button class="btn btn--sm" type="button" id="exit-dismiss">Back to the case</button>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="../terminal.js"></script>
+<script>
+(function () {
+  'use strict';
+  /* A single pane reads better centred than stretched across 1440px. */
+  var pane = document.querySelector('[data-pane]');
+  pane.style.maxWidth = '860px';
+  pane.style.margin = '0 auto';
+  pane.style.borderLeft = '1px solid var(--border)';
+  pane.style.borderRight = '1px solid var(--border)';
+
+  CaseGridTerminal.mount({ phase: 'Half 1 of 2 · you are interviewing' });
+
+  document.getElementById('exit-icon').innerHTML = CaseGrid.icon('alert', 18);
+  document.getElementById('exit-dismiss').addEventListener('click', function () {
+    document.getElementById('exit-note').classList.add('hidden');
+  });
+})();
+</script>
+</body>
+</html>

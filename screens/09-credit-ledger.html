@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Credits - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<div class="app" data-screen="credits" data-title="Credits" data-section="Account">
+  <aside class="sidebar" id="cg-sidebar"></aside>
+  <div class="main">
+    <header class="topbar" id="cg-topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <div class="page-head__text">
+          <h1 class="t-h1">Credit ledger</h1>
+          <p class="t-body muted">Every session moves your balance. Credits are the give-and-take; reliability is whether people can plan around you.</p>
+        </div>
+        <div class="page-head__actions">
+          <div class="segmented" role="group" aria-label="Filter ledger">
+            <button type="button" aria-pressed="true" data-filter="all">All</button>
+            <button type="button" aria-pressed="false" data-filter="earn">Earned</button>
+            <button type="button" aria-pressed="false" data-filter="spend">Spent</button>
+            <button type="button" aria-pressed="false" data-filter="penalty">Penalties</button>
+          </div>
+          <button class="btn" type="button" id="export-btn">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="grid grid--4" style="margin-bottom:20px" id="summary"></div>
+
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) 320px;align-items:start">
+        <section class="card">
+          <div class="card__head">
+            <h2 class="t-h2">Transactions</h2>
+            <span class="t-xs subtle" id="row-count"></span>
+          </div>
+          <div class="card__body card__body--flush">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width:112px">Date</th>
+                  <th style="width:116px">Type</th>
+                  <th>Detail</th>
+                  <th style="width:74px" class="num">Change</th>
+                  <th style="width:74px" class="num">Balance</th>
+                  <th style="width:104px" class="num">Reliability</th>
+                </tr>
+              </thead>
+              <tbody id="ledger-body"></tbody>
+            </table>
+          </div>
+          <div class="card__foot" id="ledger-foot"></div>
+        </section>
+
+        <div class="stack">
+          <section class="card">
+            <div class="card__head"><h2 class="t-h2">How reliability is computed</h2></div>
+            <div class="card__body">
+              <p class="t-sm muted">Attended sessions as a share of booked sessions over a rolling 20-session window, with late cancellations weighted double.</p>
+              <div class="mono" style="margin-top:14px;background:var(--n-50);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;line-height:1.7">
+                booked&nbsp;&nbsp;&nbsp;&nbsp;20<br>
+                attended&nbsp;&nbsp;19<br>
+                late&nbsp;cancel&nbsp;1&nbsp;&times;2<br>
+                <span style="color:var(--text-subtle)">-----------------</span><br>
+                (20&nbsp;&minus;&nbsp;2)&nbsp;/&nbsp;20&nbsp;=&nbsp;<b>96%</b>
+              </div>
+              <p class="t-xs subtle" style="margin-top:12px">The 10 Sep cancellation drops out of the window after your 30th session, which takes you back to 99%.</p>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Syndicate Freeze Pass</h2>
+              <span class="badge badge--warn">Used</span>
+            </div>
+            <div class="card__body">
+              <p class="t-sm muted">One penalty-free reschedule every 14 days, with 90 minutes notice. You used yours on 14 Sep with 106 minutes to spare, which is why that row cost nothing.</p>
+              <div class="bar" style="margin-top:14px"><div class="bar__fill bar__fill--warn" style="width:43%"></div></div>
+              <div class="row row--between" style="margin-top:8px">
+                <span class="t-xs subtle">Resets 28 Sep</span>
+                <span class="t-xs subtle tnum">8 days to go</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="callout callout--danger" id="penalty-note"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon, D = CaseGrid.data;
+  var filter = 'all', rows = [];
+
+  document.getElementById('summary').innerHTML = skeleton(4);
+  document.getElementById('ledger-body').innerHTML =
+    '<tr><td colspan="6" style="padding:20px">' +
+    '<div class="sk sk--line"></div><div class="sk sk--line" style="margin-top:14px;width:88%"></div>' +
+    '<div class="sk sk--line" style="margin-top:14px;width:94%"></div>' +
+    '<div class="sk sk--line" style="margin-top:14px;width:80%"></div></td></tr>';
+
+  document.getElementById('penalty-note').innerHTML = icon('alert', 16) +
+    '<div><strong>One penalty on record</strong><span class="muted">Cancelling inside 60 minutes costs two credits and three reliability points. ' +
+    'It is the only rule on CaseGrid that takes something away, because a partner sitting alone at 11 PM is the one failure the platform cannot undo.</span></div>';
+
+  FakeAPI.getLedger().then(function (data) {
+    rows = data;
+    renderSummary();
+    renderRows();
+  });
+
+  function skeleton(n) {
+    var s = '';
+    for (var i = 0; i < n; i++) {
+      s += '<div class="card stat"><div class="sk sk--line" style="width:44%"></div>' +
+        '<div class="sk" style="height:28px;width:56%;margin-top:14px"></div>' +
+        '<div class="sk sk--line" style="width:72%;margin-top:12px"></div></div>';
+    }
+    return s;
+  }
+
+  function renderSummary() {
+    var earned = 0, spent = 0, penalties = 0;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].delta > 0) { earned += rows[i].delta; }
+      if (rows[i].delta < 0) { spent += Math.abs(rows[i].delta); }
+      if (rows[i].type === 'Penalty') { penalties++; }
+    }
+    document.getElementById('summary').innerHTML =
+      tile('coin', 'Current balance', D.user.credits, 'Earned ' + earned + ', spent ' + spent + ' since 01 Sep') +
+      tile('shield', 'Reliability', D.user.reliability + '%', '19 of 20 booked sessions attended') +
+      tile('trend', 'Net this month', '−2', 'You have been interviewed more than you interviewed') +
+      tile('alert', 'Penalties', penalties, 'One late cancellation on 10 Sep');
+
+    function tile(ic, label, value, meta) {
+      return '<div class="card stat">' +
+        '<div class="stat__label">' + icon(ic, 15) + '<span class="t-label" style="color:inherit">' + label + '</span></div>' +
+        '<div class="stat__value">' + value + '</div>' +
+        '<div class="stat__meta">' + meta + '</div></div>';
+    }
+  }
+
+  function keep(r) {
+    if (filter === 'all') { return true; }
+    if (filter === 'earn') { return r.delta > 0; }
+    if (filter === 'spend') { return r.delta < 0 && r.type !== 'Penalty'; }
+    return r.type === 'Penalty';
+  }
+
+  function renderRows() {
+    var out = '', shown = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!keep(r)) { continue; }
+      shown++;
+      var tone = r.delta > 0 ? 'var(--ok)' : (r.delta < 0 ? 'var(--danger)' : 'var(--text-subtle)');
+      var badge = r.badge === 'penalty' ? 'badge badge--danger'
+        : (r.badge === 'freeze' ? 'badge badge--accent'
+        : (r.delta > 0 ? 'badge badge--ok' : 'badge'));
+      out += '<tr' + (r.badge === 'penalty' ? ' style="background:var(--danger-soft)"' : '') + '>' +
+        '<td class="nowrap"><div>' + r.date + '</div><div class="t-xs subtle">' + r.time + '</div></td>' +
+        '<td><span class="' + badge + '">' +
+        (r.badge === 'penalty' ? icon('alert', 12) : (r.badge === 'freeze' ? icon('snowflake', 12) : '')) +
+        r.type + '</span></td>' +
+        '<td class="muted">' + r.description + '</td>' +
+        '<td class="num tnum" style="color:' + tone + ';font-weight:650">' +
+        (r.delta > 0 ? '+' : (r.delta < 0 ? '−' : '')) + Math.abs(r.delta) + '</td>' +
+        '<td class="num tnum" style="font-weight:600">' + r.balance + '</td>' +
+        '<td class="num tnum">' + r.reliability + '%' +
+        (r.reliabilityDelta ? '<span class="delta ' + (r.reliabilityDelta > 0 ? 'delta--up' : 'delta--down') + '" style="margin-left:5px">' +
+          (r.reliabilityDelta > 0 ? '+' : '−') + Math.abs(r.reliabilityDelta) + '</span>' : '') +
+        '</td></tr>';
+    }
+
+    if (!shown) {
+      out = '<tr><td colspan="6"><div class="empty" style="padding:48px 24px">' +
+        '<div class="empty__icon">' + icon('coin', 22) + '</div>' +
+        '<h3 class="t-h2">Nothing under this filter</h3>' +
+        '<p>You have no transactions of this kind in the current window. Try "All".</p></div></td></tr>';
+    }
+
+    document.getElementById('ledger-body').innerHTML = out;
+    document.getElementById('row-count').textContent = shown + ' of ' + rows.length + ' transactions';
+    document.getElementById('ledger-foot').innerHTML =
+      icon('info', 15) + '<span>Balance is recomputed on every write. Reliability is recomputed nightly over a rolling 20-session window.</span>' +
+      '<span class="spacer"></span><span class="tnum">Opening balance 0 &middot; closing ' + D.user.credits + '</span>';
+  }
+
+  var segs = document.querySelectorAll('[data-filter]');
+  for (var i = 0; i < segs.length; i++) {
+    segs[i].addEventListener('click', function () {
+      filter = this.getAttribute('data-filter');
+      for (var j = 0; j < segs.length; j++) {
+        segs[j].setAttribute('aria-pressed', segs[j] === this ? 'true' : 'false');
+      }
+      renderRows();
+    }.bind(segs[i]));
+  }
+
+  document.getElementById('export-btn').addEventListener('click', function () {
+    var b = this;
+    b.disabled = true;
+    b.innerHTML = '<span class="spinner"></span>Preparing';
+    FakeAPI.defer(function () {
+      b.disabled = false;
+      b.innerHTML = icon('checkSm', 14) + 'Ready to download';
+    }, 900);
+  });
+})();
+</script>
+</body>
+</html>

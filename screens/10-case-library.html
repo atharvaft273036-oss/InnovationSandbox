@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Case library - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<div class="app" data-screen="library" data-title="Case library" data-section="Practice">
+  <aside class="sidebar" id="cg-sidebar"></aside>
+  <div class="main">
+    <header class="topbar" id="cg-topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <div class="page-head__text">
+          <h1 class="t-h1">Case library</h1>
+          <p class="t-body muted">Forty cases written for the Indian campus context. Numbers in the exhibits are internally consistent, so two partners running the same case reach the same answer.</p>
+        </div>
+        <div class="page-head__actions">
+          <div class="input-affix" style="width:240px" id="search-wrap">
+            <input class="input" id="search" placeholder="Search cases" aria-label="Search cases">
+          </div>
+          <a class="btn btn--primary" href="03-matching-queue.html">Find a partner</a>
+        </div>
+      </div>
+
+      <div class="card" style="padding:14px 20px;margin-bottom:20px">
+        <div class="row" style="gap:20px;align-items:flex-start;flex-wrap:wrap">
+          <div>
+            <div class="t-label" style="margin-bottom:7px">Case type</div>
+            <div class="chips" id="type-chips"></div>
+          </div>
+          <div style="width:1px;align-self:stretch;background:var(--border-subtle)"></div>
+          <div>
+            <div class="t-label" style="margin-bottom:7px">Difficulty</div>
+            <div class="chips" id="diff-chips"></div>
+          </div>
+          <div style="width:1px;align-self:stretch;background:var(--border-subtle)"></div>
+          <div>
+            <div class="t-label" style="margin-bottom:7px">Status</div>
+            <div class="chips" id="status-chips"></div>
+          </div>
+          <div class="spacer"></div>
+          <div style="align-self:center">
+            <button class="btn btn--ghost btn--sm" type="button" id="clear-btn">Clear filters</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row row--between" style="margin-bottom:12px">
+        <div class="row" style="gap:12px">
+          <span class="t-sm muted" id="result-count"></span>
+          <span class="hint" id="grid-hint"></span>
+        </div>
+        <div class="row" style="gap:8px">
+          <span class="t-xs subtle">Sort</span>
+          <select class="select" id="sort" style="width:190px;height:30px;font-size:12px">
+            <option value="popular">Most done in your batch</option>
+            <option value="az">Title, A to Z</option>
+            <option value="difficulty">Difficulty, hardest first</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="case-grid" id="grid"></div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon, D = CaseGrid.data;
+  var all = [], types = [], diffs = [], status = 'any', q = '', sort = 'popular';
+
+  document.getElementById('search-wrap').insertAdjacentHTML('afterbegin', icon('search', 16));
+  document.getElementById('grid-hint').innerHTML =
+    icon('info', 13) + '<span>Click any case to see what it asks before you commit to it.</span>';
+
+  document.getElementById('grid').innerHTML = (function () {
+    var s = '';
+    for (var i = 0; i < 12; i++) {
+      s += '<div class="card" style="padding:16px;min-height:152px">' +
+        '<div class="sk sk--line" style="width:34%"></div>' +
+        '<div class="sk sk--line" style="margin-top:14px"></div>' +
+        '<div class="sk sk--line" style="margin-top:8px;width:72%"></div>' +
+        '<div class="sk sk--line" style="margin-top:24px;width:56%"></div></div>';
+    }
+    return s;
+  })();
+
+  FakeAPI.getCases().then(function (data) {
+    all = data;
+    renderChips();
+    renderGrid();
+
+    /* The command palette links straight to a case, so honour ?case= */
+    var m = /[?&]case=(cs-\d+)/.exec(window.location.search);
+    if (m) { openCase(m[1]); }
+  });
+
+  function counts(key, value) {
+    var n = 0;
+    for (var i = 0; i < all.length; i++) { if (all[i][key] === value) { n++; } }
+    return n;
+  }
+
+  function renderChips() {
+    var t = '';
+    for (var i = 0; i < D.caseTypes.length; i++) {
+      var on = types.indexOf(D.caseTypes[i]) > -1;
+      t += '<button class="chip" type="button" aria-pressed="' + on + '" data-type="' + D.caseTypes[i] + '">' +
+        (on ? icon('checkSm', 12) : '') + D.caseTypes[i] +
+        '<span class="chip__n">' + counts('type', D.caseTypes[i]) + '</span></button>';
+    }
+    document.getElementById('type-chips').innerHTML = t;
+
+    var d = '';
+    for (var j = 0; j < D.difficulties.length; j++) {
+      var onD = diffs.indexOf(D.difficulties[j]) > -1;
+      d += '<button class="chip" type="button" aria-pressed="' + onD + '" data-diff="' + D.difficulties[j] + '">' +
+        (onD ? icon('checkSm', 12) : '') + D.difficulties[j] +
+        '<span class="chip__n">' + counts('difficulty', D.difficulties[j]) + '</span></button>';
+    }
+    document.getElementById('diff-chips').innerHTML = d;
+
+    var opts = [['any', 'Any'], ['todo', 'Not yet done'], ['done', 'Completed']];
+    var s = '';
+    for (var k = 0; k < opts.length; k++) {
+      s += '<button class="chip" type="button" aria-pressed="' + (status === opts[k][0]) + '" data-status="' + opts[k][0] + '">' +
+        opts[k][1] + '</button>';
+    }
+    document.getElementById('status-chips').innerHTML = s;
+
+    bind('[data-type]', function (el) {
+      var v = el.getAttribute('data-type'), i = types.indexOf(v);
+      if (i > -1) { types.splice(i, 1); } else { types.push(v); }
+    });
+    bind('[data-diff]', function (el) {
+      var v = el.getAttribute('data-diff'), i = diffs.indexOf(v);
+      if (i > -1) { diffs.splice(i, 1); } else { diffs.push(v); }
+    });
+    bind('[data-status]', function (el) { status = el.getAttribute('data-status'); });
+  }
+
+  function bind(sel, fn) {
+    var els = document.querySelectorAll(sel);
+    for (var i = 0; i < els.length; i++) {
+      (function (el) {
+        el.addEventListener('click', function () { fn(el); renderChips(); renderGrid(); });
+      })(els[i]);
+    }
+  }
+
+  function filtered() {
+    var out = all.filter(function (c) {
+      if (types.length && types.indexOf(c.type) === -1) { return false; }
+      if (diffs.length && diffs.indexOf(c.difficulty) === -1) { return false; }
+      if (status === 'done' && !c.done) { return false; }
+      if (status === 'todo' && c.done) { return false; }
+      if (q && (c.title + ' ' + c.industry).toLowerCase().indexOf(q.toLowerCase()) === -1) { return false; }
+      return true;
+    });
+    var order = { Novice: 1, Intermediate: 2, Advanced: 3 };
+    out.sort(function (a, b) {
+      if (sort === 'az') { return a.title < b.title ? -1 : 1; }
+      if (sort === 'difficulty') { return order[b.difficulty] - order[a.difficulty]; }
+      return b.batchCompletions - a.batchCompletions;
+    });
+    return out;
+  }
+
+  function renderGrid() {
+    var list = filtered();
+    var grid = document.getElementById('grid');
+    document.getElementById('result-count').textContent =
+      list.length + ' of ' + all.length + ' cases' +
+      (types.length || diffs.length || status !== 'any' || q ? ' after filtering' : '');
+
+    if (!list.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1"><div class="card"><div class="empty">' +
+        '<div class="empty__icon">' + icon('book', 22) + '</div>' +
+        '<h3 class="t-h2">No cases match those filters</h3>' +
+        '<p>Try dropping the difficulty filter. Of the 40 cases, 9 are M&amp;A and they are all Advanced.</p>' +
+        '<button class="btn" type="button" id="empty-clear" style="margin-top:20px">Clear filters</button>' +
+        '</div></div></div>';
+      document.getElementById('empty-clear').addEventListener('click', clearAll);
+      return;
+    }
+
+    var out = '';
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      out += '<button class="case-card" type="button" data-case="' + c.id + '">' +
+        '<div class="row" style="gap:6px">' +
+        '<span class="badge' + (c.type === 'M&A' ? ' badge--accent' : '') + '">' + c.type + '</span>' +
+        '<span class="badge">' + c.difficulty + '</span>' +
+        (c.done ? '<span class="badge badge--ok" style="margin-left:auto">' + icon('checkSm', 11) + 'Done</span>' : '') +
+        '</div>' +
+        '<div class="case-card__title">' + c.title + '</div>' +
+        '<div class="case-card__meta">' +
+        '<span>' + icon('building', 13) + c.industry + '</span>' +
+        '<span>' + icon('clock', 13) + c.duration + ' min</span>' +
+        '<span style="margin-left:auto">' + icon('users', 13) + c.batchCompletions + ' in batch</span>' +
+        '</div></button>';
+    }
+    grid.innerHTML = out;
+
+    var cards = grid.querySelectorAll('[data-case]');
+    for (var k = 0; k < cards.length; k++) {
+      (function (el) {
+        el.addEventListener('click', function () { openCase(el.getAttribute('data-case')); });
+      })(cards[k]);
+    }
+  }
+
+  /* ---- case detail: opening a card has to do something ---- */
+  function caseById(id) {
+    for (var i = 0; i < all.length; i++) { if (all[i].id === id) { return all[i]; } }
+    return null;
+  }
+
+  function openCase(id) {
+    var c = caseById(id);
+    if (!c) { return; }
+    var brief = D.typeBriefs[c.type];
+
+    var body =
+      '<div class="row" style="gap:6px;flex-wrap:wrap">' +
+      '<span class="badge' + (c.type === 'M&A' ? ' badge--accent' : '') + '">' + c.type + '</span>' +
+      '<span class="badge">' + c.difficulty + '</span>' +
+      '<span class="badge">' + c.industry + '</span>' +
+      '<span class="badge">' + c.duration + ' minutes</span>' +
+      (c.done ? '<span class="badge badge--ok">' + icon('checkSm', 11) + 'You have run this</span>' : '') +
+      '</div>' +
+
+      '<div class="callout" style="margin-top:18px">' + icon('help', 16) +
+      '<div><strong>What you will be asked</strong><span class="muted">' + brief.asked + '</span></div></div>' +
+
+      '<div class="callout callout--accent" style="margin-top:12px">' + icon('target', 16) +
+      '<div><strong>Where the marks are</strong><span class="muted">' + brief.watch + '</span></div></div>' +
+
+      '<div class="t-label" style="margin:22px 0 10px">In your batch</div>' +
+      '<div class="grid grid--2" style="gap:12px">' +
+      fact(c.batchCompletions, 'students have run it', 'of 214 on campus') +
+      fact(difficultyFit(c), 'fit for your tier', 'You are Advanced, 22 cases') +
+      '</div>' +
+
+      '<div class="t-label" style="margin:22px 0 10px">How it runs</div>' +
+      '<ul class="checklist">' +
+      liner('Your interviewer holds the solution key and the exhibits.') +
+      liner('Exhibits are released one at a time, only when you ask.') +
+      liner('You get a private scratchpad. Nothing you write is shared.') +
+      liner('Scores arrive after the call, never during it.') +
+      '</ul>';
+
+    var foot =
+      '<a class="btn btn--primary" href="03-matching-queue.html" style="flex:1">' +
+      icon('users', 15) + 'Find a partner for this case</a>' +
+      '<button class="btn" type="button" id="shortlist-btn">Shortlist</button>';
+
+    var panel = CaseGrid.openDrawer({
+      eyebrow: 'Case ' + c.id.replace('cs-', '') + ' of 40',
+      title: c.title,
+      body: body,
+      foot: foot
+    });
+
+    panel.querySelector('#shortlist-btn').addEventListener('click', function () {
+      this.disabled = true;
+      this.innerHTML = icon('checkSm', 14) + 'Shortlisted';
+      CaseGrid.toast('Added to your shortlist', 'ok',
+        'Matching will offer this case first the next time you queue.');
+    });
+
+    function fact(n, label, sub) {
+      return '<div class="card" style="padding:14px">' +
+        '<div style="font-size:20px;font-weight:680;letter-spacing:-.02em">' + n + '</div>' +
+        '<div class="t-sm" style="margin-top:2px">' + label + '</div>' +
+        '<div class="t-xs subtle">' + sub + '</div></div>';
+    }
+    function liner(t) {
+      return '<li><span class="check check--on">' + icon('checkSm', 12) + '</span>' +
+        '<span class="checklist__t">' + t + '</span></li>';
+    }
+    function difficultyFit(cs) {
+      if (cs.difficulty === 'Advanced') { return 'Strong'; }
+      if (cs.difficulty === 'Intermediate') { return 'Easy'; }
+      return 'Warm-up';
+    }
+  }
+
+  function clearAll() {
+    types = []; diffs = []; status = 'any'; q = '';
+    document.getElementById('search').value = '';
+    renderChips();
+    renderGrid();
+    CaseGrid.toast('Filters cleared', null, 'Showing all ' + all.length + ' cases again.');
+  }
+
+  document.getElementById('clear-btn').addEventListener('click', clearAll);
+  document.getElementById('search').addEventListener('input', function () {
+    q = this.value;
+    renderGrid();
+  });
+  document.getElementById('sort').addEventListener('change', function () {
+    sort = this.value;
+    renderGrid();
+  });
+})();
+</script>
+</body>
+</html>

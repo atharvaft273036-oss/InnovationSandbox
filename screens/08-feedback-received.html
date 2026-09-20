@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Feedback - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body data-flow="feedback">
+<div class="app" data-screen="feedback" data-title="Feedback" data-section="Account">
+  <aside class="sidebar" id="cg-sidebar"></aside>
+  <div class="main">
+    <header class="topbar" id="cg-topbar"></header>
+    <div id="cg-flow"></div>
+    <main class="content">
+
+      <div class="page-head">
+        <div class="page-head__text">
+          <div class="row" style="gap:8px;margin-bottom:6px">
+            <span class="badge badge--accent">New</span>
+            <span class="t-xs subtle" id="head-meta"></span>
+          </div>
+          <h1 class="t-h1" id="head-title"></h1>
+          <p class="t-body muted">You were the candidate. Your interviewer filled the rubric 12 minutes after the call ended.</p>
+        </div>
+        <div class="page-head__actions">
+          <button class="btn" type="button" id="ack-btn">Mark as read</button>
+          <a class="btn btn--primary" href="03-matching-queue.html">Book the next case</a>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);align-items:start">
+
+        <div class="stack">
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Six-dimension breakdown</h2>
+              <span class="badge badge--ok" id="avg-badge"></span>
+            </div>
+            <div class="card__body" id="radar-body" style="padding-bottom:8px"></div>
+            <div class="card__foot" id="radar-legend"></div>
+          </section>
+
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Against your last five sessions</h2>
+              <span class="t-xs subtle">Marker shows your prior average</span>
+            </div>
+            <div class="card__body" id="bars"></div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="card" id="comment-1"></section>
+          <section class="card" id="comment-2"></section>
+
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Growth areas</h2>
+              <span class="badge">Auto-identified</span>
+            </div>
+            <div class="card__body card__body--flush" id="growth"></div>
+            <div class="card__foot" id="growth-foot"></div>
+          </section>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon, D = CaseGrid.data;
+
+  document.getElementById('radar-body').innerHTML = '<div class="sk sk--block" style="height:270px"></div>';
+  document.getElementById('bars').innerHTML =
+    '<div class="sk sk--line"></div><div class="sk sk--line" style="margin-top:16px"></div>' +
+    '<div class="sk sk--line" style="margin-top:16px"></div><div class="sk sk--line" style="margin-top:16px"></div>';
+  document.getElementById('comment-1').innerHTML = '<div class="card__body"><div class="sk sk--title"></div>' +
+    '<div class="sk sk--line" style="margin-top:14px"></div><div class="sk sk--line" style="margin-top:10px;width:88%"></div>' +
+    '<div class="sk sk--line" style="margin-top:10px;width:76%"></div></div>';
+  document.getElementById('comment-2').innerHTML = document.getElementById('comment-1').innerHTML;
+
+  FakeAPI.getFeedback().then(render);
+
+  function render(f) {
+    var avg = CaseGrid.average(f.scores);
+    var prevAvg = CaseGrid.average(f.previousAverage);
+
+    document.getElementById('head-meta').textContent =
+      f.caseTitle + ' · ' + f.date + ' · interviewed by ' + f.interviewer + ' (' + f.interviewerTier + ')';
+    document.getElementById('head-title').textContent =
+      'You averaged ' + avg.toFixed(1) + ' out of 5';
+    document.getElementById('avg-badge').innerHTML =
+      icon('arrowUp', 13) + '+' + (avg - prevAvg).toFixed(1) + ' on your running average';
+
+    document.getElementById('radar-body').innerHTML = radar(f);
+    document.getElementById('radar-legend').innerHTML =
+      '<span class="row" style="gap:6px"><span style="width:12px;height:3px;background:var(--accent);border-radius:2px"></span>This session</span>' +
+      '<span class="row" style="gap:6px"><span style="width:12px;height:3px;background:var(--n-500);border-radius:2px"></span>Your last five, averaged</span>' +
+      '<span class="spacer"></span><span>Scale 1 to 5, outer ring is 5</span>';
+
+    renderBars(f);
+    renderComments(f);
+    renderGrowth(f);
+  }
+
+  /* Hexagonal radar, drawn by hand - six axes, two polygons. */
+  function radar(f) {
+    var size = 300, cx = size / 2, cy = size / 2 + 4, r = 96;
+    var dims = D.rubric;
+    var out = '<svg viewBox="0 0 ' + size + ' ' + (size + 6) + '" width="100%" height="286" role="img" ' +
+      'aria-label="Radar chart of six rubric scores, all four or five out of five">';
+
+    function pt(i, value) {
+      var a = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+      var rad = (value / 5) * r;
+      return [cx + Math.cos(a) * rad, cy + Math.sin(a) * rad];
+    }
+
+    /* rings */
+    for (var ring = 1; ring <= 5; ring++) {
+      var pts = [];
+      for (var i = 0; i < 6; i++) { pts.push(pt(i, ring).map(function (n) { return n.toFixed(1); }).join(',')); }
+      out += '<polygon points="' + pts.join(' ') + '" fill="none" stroke="var(--border' + (ring === 5 ? '-strong' : '-subtle') + ')" stroke-width="1"/>';
+    }
+    /* spokes + labels */
+    for (var s = 0; s < 6; s++) {
+      var end = pt(s, 5);
+      out += '<line x1="' + cx + '" y1="' + cy + '" x2="' + end[0].toFixed(1) + '" y2="' + end[1].toFixed(1) +
+        '" stroke="var(--border-subtle)" stroke-width="1"/>';
+      var lp = pt(s, 6.05);
+      var anchor = Math.abs(lp[0] - cx) < 4 ? 'middle' : (lp[0] > cx ? 'start' : 'end');
+      out += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 3).toFixed(1) + '" text-anchor="' + anchor +
+        '" font-size="10.5" font-weight="600" fill="var(--n-700)">' + dims[s].short + '</text>';
+      var score = f.scores[dims[s].id];
+      var sp = pt(s, 6.05);
+      out += '<text x="' + sp[0].toFixed(1) + '" y="' + (sp[1] + 15).toFixed(1) + '" text-anchor="' + anchor +
+        '" font-size="10" fill="var(--n-400)">' + score + ' / 5</text>';
+    }
+    /* previous average polygon */
+    var prev = [], cur = [];
+    for (var k = 0; k < 6; k++) {
+      prev.push(pt(k, f.previousAverage[dims[k].id]).map(function (n) { return n.toFixed(1); }).join(','));
+      cur.push(pt(k, f.scores[dims[k].id]).map(function (n) { return n.toFixed(1); }).join(','));
+    }
+    out += '<polygon points="' + prev.join(' ') + '" fill="none" stroke="var(--n-500)" stroke-width="1.5" stroke-dasharray="4 3"/>';
+    out += '<polygon points="' + cur.join(' ') + '" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+    for (var d = 0; d < 6; d++) {
+      var c = pt(d, f.scores[dims[d].id]);
+      out += '<circle cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" r="3.5" fill="var(--n-0)" stroke="var(--accent)" stroke-width="2"/>';
+    }
+    return out + '</svg>';
+  }
+
+  function renderBars(f) {
+    var out = '';
+    for (var i = 0; i < D.rubric.length; i++) {
+      var d = D.rubric[i];
+      var now = f.scores[d.id], was = f.previousAverage[d.id];
+      var diff = Math.round((now - was) * 10) / 10;
+      out += '<div class="scorebar">' +
+        '<div><div class="t-sm" style="font-weight:550">' + d.label + '</div>' +
+        '<div class="t-xs subtle">was ' + was.toFixed(1) + '</div></div>' +
+        '<div class="scorebar__track">' +
+        '<div class="scorebar__fill" style="width:' + (now / 5 * 100) + '%"></div>' +
+        '<div class="scorebar__prev" style="left:calc(' + (was / 5 * 100) + '% - 1px)"></div></div>' +
+        '<div class="scorebar__val">' + now +
+        '<div class="t-xs ' + (diff > 0 ? 'delta delta--up' : (diff < 0 ? 'delta delta--down' : 'subtle')) + '" style="justify-content:flex-end">' +
+        (diff > 0 ? '+' : '') + diff.toFixed(1) + '</div></div>' +
+        '</div>';
+    }
+    document.getElementById('bars').innerHTML = out;
+  }
+
+  function renderComments(f) {
+    document.getElementById('comment-1').innerHTML = commentCard(
+      'What worked', f.comments.strength, 'ok', 'check', f);
+    document.getElementById('comment-2').innerHTML = commentCard(
+      'What to change', f.comments.growth, 'warn', 'trend', f);
+  }
+
+  function commentCard(title, body, tone, ic, f) {
+    return '<div class="card__head">' +
+      '<span style="color:var(--' + (tone === 'ok' ? 'ok' : 'warn') + ')">' + icon(ic, 16) + '</span>' +
+      '<h2 class="t-h2">' + title + '</h2>' +
+      '<span class="badge" style="margin-left:auto">Required comment</span></div>' +
+      '<div class="card__body">' +
+      '<p class="t-body">' + body + '</p>' +
+      '<div class="row" style="gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border-subtle)">' +
+      '<span class="avatar" style="width:24px;height:24px;font-size:10px">' + f.interviewerInitials + '</span>' +
+      '<span class="t-xs subtle">' + f.interviewer + ' · ' + f.interviewerTier + ' · 19 cases conducted</span>' +
+      '<span class="spacer"></span>' +
+      '<button class="btn btn--ghost btn--sm" type="button">Helpful</button>' +
+      '<button class="btn btn--ghost btn--sm" type="button">Flag</button></div></div>';
+  }
+
+  function renderGrowth(f) {
+    var out = '';
+    for (var i = 0; i < f.growthAreas.length; i++) {
+      var g = f.growthAreas[i];
+      out += '<div style="padding:16px 20px;border-bottom:1px solid var(--border-subtle)">' +
+        '<div class="row" style="gap:8px"><span class="badge badge--accent">' + g.dimension + '</span>' +
+        '<span class="t-h3">' + g.title + '</span></div>' +
+        '<p class="t-sm muted" style="margin-top:6px">' + g.detail + '</p></div>';
+    }
+    document.getElementById('growth').innerHTML = out;
+    document.getElementById('growth-foot').innerHTML =
+      icon('info', 15) + '<span>Derived from your last five rubrics, not from this one alone.</span>' +
+      '<a class="btn btn--ghost btn--sm" href="10-case-library.html" style="margin-left:auto">Find a case that drills this</a>';
+  }
+
+  document.getElementById('ack-btn').addEventListener('click', function () {
+    var b = this;
+    b.disabled = true;
+    b.innerHTML = '<span class="spinner"></span>Saving';
+    FakeAPI.defer(function () {
+      b.outerHTML = '<span class="badge badge--ok" style="height:34px;padding:0 12px">' + icon('checkSm', 13) + 'Marked as read</span>';
+      var n = document.querySelector('.badge--accent');
+      if (n && n.textContent === 'New') { n.outerHTML = '<span class="badge">Read</span>'; }
+    }, 600);
+  });
+})();
+</script>
+</body>
+</html>

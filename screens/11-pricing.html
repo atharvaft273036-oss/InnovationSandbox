@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan and billing - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<div class="app" data-screen="pricing" data-title="Plan and billing" data-section="Account">
+  <aside class="sidebar" id="cg-sidebar"></aside>
+  <div class="main">
+    <header class="topbar" id="cg-topbar"></header>
+    <main class="content">
+
+      <div style="max-width:1000px;margin:0 auto">
+
+        <div style="text-align:center;margin-bottom:32px">
+          <span class="badge badge--accent">Placement season 2026</span>
+          <h1 class="t-display" style="margin-top:14px">Practise every night until December</h1>
+          <p class="t-body muted" style="max-width:56ch;margin:10px auto 0">
+            One price, unlimited peer sessions. The credit system, not your wallet, decides how often you can be interviewed -
+            conduct a case, earn a credit, spend it when it is your turn in the chair.
+          </p>
+        </div>
+
+        <div class="grid grid--2" style="gap:20px;align-items:stretch" id="plans"></div>
+
+        <section class="card" style="margin-top:40px">
+          <div class="card__head">
+            <h2 class="t-h2">Feature comparison</h2>
+            <span class="t-xs subtle">Both plans include the full 40-case library and the six-dimension rubric</span>
+          </div>
+          <div class="card__body card__body--flush">
+            <table class="table compare">
+              <thead>
+                <tr>
+                  <th style="width:42%">Feature</th>
+                  <th style="width:29%">Monthly &middot; Rs. 499</th>
+                  <th style="width:29%">Season Pass &middot; Rs. 1,999</th>
+                </tr>
+              </thead>
+              <tbody id="compare-body"></tbody>
+            </table>
+          </div>
+          <div class="card__foot">
+            <span id="foot-icon"></span>
+            <span>Student pricing. Payment is by UPI or card; the institute does not see your billing.</span>
+          </div>
+        </section>
+
+        <section style="margin-top:40px">
+          <h2 class="t-h2" style="margin-bottom:14px">Questions people actually ask</h2>
+          <div class="grid grid--3" id="faq"></div>
+        </section>
+
+        <div class="callout" style="margin-top:32px" id="footer-note"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon;
+
+  document.getElementById('plans').innerHTML =
+    '<div class="card price-card"><div class="sk sk--title"></div><div class="sk sk--block" style="height:180px;margin-top:20px"></div></div>' +
+    '<div class="card price-card"><div class="sk sk--title"></div><div class="sk sk--block" style="height:180px;margin-top:20px"></div></div>';
+
+  FakeAPI.getPricing().then(render);
+
+  function render(P) {
+    document.getElementById('plans').innerHTML =
+      plan(P.monthly, [
+        'Unlimited peer case sessions',
+        'All 40 cases, all five case types',
+        'Six-dimension rubric on every case',
+        'Rubric trend across your last 6 sessions',
+        'One Syndicate Freeze Pass every 14 days'
+      ], [
+        'No priority matching',
+        'No credit rollover between months'
+      ], false) +
+      plan(P.season, [
+        'Everything in Monthly',
+        'Priority matching inside your practice window',
+        'Full season rubric history, not just six sessions',
+        'Cross-tier shadowing - observe an Advanced case',
+        'Placement-week surge slots',
+        'Credits roll over month to month'
+      ], [], true);
+
+    var b = '';
+    for (var i = 0; i < P.features.length; i++) {
+      var f = P.features[i];
+      b += '<tr><td class="table__title">' + f.label + '</td>' +
+        '<td>' + cell(f.monthly) + '</td>' +
+        '<td style="background:var(--accent-soft)">' + cell(f.season) + '</td></tr>';
+    }
+    document.getElementById('compare-body').innerHTML = b;
+
+    var q = '';
+    for (var j = 0; j < P.faq.length; j++) {
+      q += '<div class="card" style="padding:18px 20px">' +
+        '<div class="t-h3">' + P.faq[j].q + '</div>' +
+        '<p class="t-sm muted" style="margin-top:6px">' + P.faq[j].a + '</p></div>';
+    }
+    document.getElementById('faq').innerHTML = q;
+
+    document.getElementById('foot-icon').innerHTML = icon('info', 15);
+    document.getElementById('footer-note').innerHTML = icon('shield', 16) +
+      '<div><strong>You are on Monthly, renewing 12 Oct 2026</strong>' +
+      '<span class="muted">Switching to the season pass today credits the unused part of this month against the Rs. 1,999. ' +
+      'You would pay Rs. 1,732 now and nothing again until 20 Jan 2027.</span></div>';
+
+    wire();
+  }
+
+  function cell(v) {
+    if (v === true) { return '<span style="color:var(--ok);display:inline-flex">' + icon('checkSm', 17) + '</span>'; }
+    if (v === false) { return '<span style="color:var(--n-300);display:inline-flex">' + icon('minus', 16) + '</span>'; }
+    return '<span class="t-sm">' + v + '</span>';
+  }
+
+  function plan(p, includes, excludes, featured) {
+    var out = '<div class="card price-card' + (featured ? ' price-card--feature' : '') + '">' +
+      (featured ? '<span class="price-card__ribbon">' + p.badge + '</span>' : '') +
+      '<div class="row" style="gap:8px"><h2 class="t-h2">' + p.name + '</h2>' +
+      (featured ? '' : '<span class="badge" style="margin-left:auto">Your current plan</span>') + '</div>' +
+      '<div class="row" style="gap:8px;align-items:baseline;margin-top:14px">' +
+      '<span class="price-card__amount">' + p.price + '</span>' +
+      '<span class="t-sm subtle">' + p.unit + '</span></div>' +
+      '<div class="t-xs subtle" style="margin-top:6px">' + (p.effective || p.note) + '</div>' +
+      '<ul class="price-list">';
+
+    for (var i = 0; i < includes.length; i++) {
+      out += '<li>' + icon('checkSm', 15) + '<span>' + includes[i] + '</span></li>';
+    }
+    for (var j = 0; j < excludes.length; j++) {
+      out += '<li class="off"><span style="color:var(--n-300);display:inline-flex;margin-top:2px">' + icon('minus', 15) + '</span>' +
+        '<span>' + excludes[j] + '</span></li>';
+    }
+    out += '</ul><div style="margin-top:auto">' +
+      '<button class="btn ' + (featured ? 'btn--primary' : 'btn--dark') + ' btn--lg btn--block" type="button" data-plan="' + p.name + '">' +
+      p.cta + '</button>' +
+      '<p class="t-xs subtle" style="margin-top:10px;text-align:center">' + p.note + '</p></div></div>';
+    return out;
+  }
+
+  function wire() {
+    var btns = document.querySelectorAll('[data-plan]');
+    for (var i = 0; i < btns.length; i++) {
+      (function (b) {
+        b.addEventListener('click', function () {
+          var label = b.textContent;
+          b.disabled = true;
+          b.innerHTML = '<span class="spinner ' + (b.className.indexOf('primary') > -1 || b.className.indexOf('dark') > -1 ? 'spinner--invert' : '') + '"></span>Opening checkout';
+          FakeAPI.defer(function () {
+            b.disabled = false;
+            b.innerHTML = icon('checkSm', 15) + 'Checkout ready';
+            setTimeout(function () { b.innerHTML = label; }, 2200);
+          }, 800);
+        });
+      })(btns[i]);
+    }
+  }
+})();
+</script>
+</body>
+</html>

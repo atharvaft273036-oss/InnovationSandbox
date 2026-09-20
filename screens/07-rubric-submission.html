@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Submit rubric - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  .backdrop-pane { filter: blur(2px) saturate(.6); opacity: .5; pointer-events: none; user-select: none; }
+  .gate-bar {
+    position: fixed; top: 98px; left: 0; right: 0; z-index: 90;
+    background: var(--warn-soft); border-bottom: 1px solid var(--warn-border);
+    color: var(--warn); font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; padding: 7px 20px;
+  }
+  .modal { max-width: 800px; }
+</style>
+</head>
+<body data-flow="score">
+<div class="terminal">
+  <header class="terminal__bar" id="term-bar"></header>
+  <div id="cg-flow" data-terminal="true"></div>
+  <div class="gate-bar" id="gate-bar"></div>
+  <div class="terminal__body">
+    <div class="pane backdrop-pane" data-pane="interviewer" aria-hidden="true"></div>
+  </div>
+</div>
+
+<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="rubric-title" id="overlay">
+  <div class="modal">
+    <div class="modal__head">
+      <div style="min-width:0">
+        <h1 class="t-h2" id="rubric-title">Score Adeeba Kishwar</h1>
+        <p class="t-xs subtle" style="margin-top:2px">Kirana Quick-Commerce Margin Squeeze &middot; 45 minutes &middot; ended 11:45 PM</p>
+      </div>
+      <div class="spacer"></div>
+      <span class="badge" id="progress-badge">0 of 8 complete</span>
+    </div>
+
+    <div class="modal__body" id="modal-body">
+      <div class="callout callout--warn" id="gate-callout"></div>
+
+      <div id="dims" style="margin-top:20px"></div>
+
+      <div class="hr"></div>
+
+      <div class="stack" id="comments"></div>
+    </div>
+
+    <div class="modal__foot">
+      <span class="t-xs subtle" id="foot-note"></span>
+      <div class="spacer"></div>
+      <button class="btn" type="button" id="save-btn">Save draft</button>
+      <button class="btn btn--primary" type="button" id="submit-btn" disabled>Submit rubric</button>
+    </div>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="../terminal.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon, D = CaseGrid.data;
+  var MIN = 120;
+
+  CaseGridTerminal.mount({ phase: 'Half 1 complete · rubric outstanding' });
+  document.getElementById('gate-bar').innerHTML = icon('lock', 14) +
+    'Session locked until the rubric is submitted. You cannot exit, rematch or start half 2 before this is done.';
+
+  var state = {
+    scores: {},
+    strength: '',
+    growth: '',
+    touched: {},
+    submitting: false,
+    submitted: false
+  };
+
+  document.getElementById('gate-callout').innerHTML = icon('alert', 16) +
+    '<div><strong>Feedback is the price of a credit</strong>' +
+    '<span class="muted">All six dimensions and both comments are required. Adeeba sees these scores and your words, not your name-calling: ' +
+    'write the thing you would have wanted to hear after your own first case.</span></div>';
+
+  function renderDims() {
+    var out = '';
+    for (var i = 0; i < D.rubric.length; i++) {
+      var d = D.rubric[i];
+      var picked = state.scores[d.id];
+      out += '<div class="rubric-item' + (picked ? ' rubric-item--done' : '') + '">' +
+        '<div class="rubric-item__head"><span class="rubric-item__n">' + (picked ? icon('checkSm', 12) : (i + 1)) + '</span>' +
+        '<h3 class="t-h3">' + d.label + '</h3>' +
+        '<span class="t-xs subtle">' + d.blurb + '</span>' +
+        '<span class="spacer"></span>' +
+        (picked
+          ? '<span class="badge badge--accent nowrap">' + picked + ' of 5</span>'
+          : '<span class="badge badge--warn nowrap">Required</span>') +
+        '</div><div class="scale" role="group" aria-label="' + d.label + ' score">';
+      for (var v = 1; v <= 5; v++) {
+        out += '<button class="scale__btn" type="button" aria-pressed="' + (picked === v) + '" ' +
+          'data-dim="' + d.id + '" data-val="' + v + '">' +
+          '<span class="scale__num">' + v + '</span>' +
+          '<span class="scale__anchor">' + d.anchors[v] + '</span></button>';
+      }
+      out += '</div></div>';
+    }
+    document.getElementById('dims').innerHTML = out;
+
+    var btns = document.querySelectorAll('[data-dim]');
+    for (var b = 0; b < btns.length; b++) {
+      btns[b].addEventListener('click', function () {
+        var id = this.getAttribute('data-dim');
+        state.scores[id] = parseInt(this.getAttribute('data-val'), 10);
+        renderDims();
+        refresh();
+        jumpToNextGap(id);
+      });
+    }
+  }
+
+  /* After a score lands, carry the eye to the next thing that still needs one. */
+  function jumpToNextGap(justScored) {
+    var order = D.rubric.map(function (d) { return d.id; });
+    var from = order.indexOf(justScored);
+    for (var i = from + 1; i < order.length; i++) {
+      if (!state.scores[order[i]]) { return scrollToDim(order[i]); }
+    }
+    for (var j = 0; j < from; j++) {
+      if (!state.scores[order[j]]) { return scrollToDim(order[j]); }
+    }
+    if (state.strength.length < MIN) { focusBox('strength'); }
+    else if (state.growth.length < MIN) { focusBox('growth'); }
+  }
+
+  function scrollToDim(id) {
+    var el = document.querySelector('[data-dim="' + id + '"]');
+    if (!el) { return; }
+    var item = el.closest ? el.closest('.rubric-item') : el.parentNode.parentNode;
+    if (item && item.scrollIntoView) { item.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }
+
+  function focusBox(key) {
+    var ta = document.getElementById('ta-' + key);
+    if (ta && ta.scrollIntoView) {
+      ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      ta.focus({ preventScroll: true });
+    }
+  }
+
+  function renderComments() {
+    document.getElementById('comments').innerHTML =
+      box('strength', 'What worked, specifically',
+        'Name the moment. "Good structure" helps nobody; "you split fixed aircraft cost from variable turn cost before I gave you a number" does.',
+        'At minute four she...') +
+      box('growth', 'What to change before the next case',
+        'One behaviour, one instruction. If they cannot act on it tomorrow morning, it is not feedback.',
+        'Next time, lead with...');
+
+    ['strength', 'growth'].forEach(function (k) {
+      var ta = document.getElementById('ta-' + k);
+      ta.addEventListener('input', function () {
+        state[k] = this.value;
+        updateCount(k);
+        refresh();
+      });
+      ta.addEventListener('blur', function () {
+        state.touched[k] = true;
+        updateCount(k);
+      });
+    });
+
+    function box(key, label, hint, placeholder) {
+      var n = state[key].length;
+      var short = n < MIN;
+      return '<div class="field">' +
+        '<div class="row"><label class="field__label" for="ta-' + key + '">' + label + '</label>' +
+        '<span class="badge badge--warn" style="margin-left:6px">Required</span>' +
+        '<span class="spacer"></span>' +
+        '<span class="char-count" id="cc-' + key + '">' + n + ' / ' + MIN + ' minimum</span></div>' +
+        '<textarea class="textarea' + (state.touched[key] && short ? ' textarea--invalid' : '') + '" id="ta-' + key + '" ' +
+        'placeholder="' + placeholder + '" rows="4">' + CaseGrid.esc(state[key]) + '</textarea>' +
+        '<span class="field__hint">' + hint + '</span></div>';
+    }
+  }
+
+  function updateCount(key) {
+    var n = state[key].length;
+    var el = document.getElementById('cc-' + key);
+    var ta = document.getElementById('ta-' + key);
+    el.textContent = n < MIN ? (n + ' / ' + MIN + ' minimum') : (n + ' characters');
+    el.className = 'char-count' + (n >= MIN ? ' char-count--ok' : (state.touched[key] ? ' char-count--over' : ''));
+    if (n >= MIN) { ta.classList.remove('textarea--invalid'); }
+  }
+
+  function done() {
+    var filled = 0;
+    for (var i = 0; i < D.rubric.length; i++) { if (state.scores[D.rubric[i].id]) { filled++; } }
+    if (state.strength.length >= MIN) { filled++; }
+    if (state.growth.length >= MIN) { filled++; }
+    return filled;
+  }
+
+  function refresh() {
+    var n = done();
+    var ready = n === 8;
+    document.getElementById('progress-badge').textContent = n + ' of 8 complete';
+    document.getElementById('progress-badge').className = 'badge' + (ready ? ' badge--ok' : '');
+
+    var btn = document.getElementById('submit-btn');
+    btn.disabled = !ready || state.submitting;
+    btn.innerHTML = state.submitting ? '<span class="spinner spinner--invert"></span>Submitting' : 'Submit rubric';
+
+    /* Every outstanding item is a button that takes you straight to it. */
+    var missing = [];
+    for (var i = 0; i < D.rubric.length; i++) {
+      if (!state.scores[D.rubric[i].id]) {
+        missing.push({ label: D.rubric[i].short, go: 'dim:' + D.rubric[i].id });
+      }
+    }
+    if (state.strength.length < MIN) { missing.push({ label: 'What worked', go: 'box:strength' }); }
+    if (state.growth.length < MIN) { missing.push({ label: 'What to change', go: 'box:growth' }); }
+
+    var foot = document.getElementById('foot-note');
+    if (ready) {
+      foot.innerHTML = '<span style="color:var(--ok);display:flex;gap:6px;align-items:center">' +
+        icon('checkSm', 14) + 'Ready to send. Adeeba is notified straight away.</span>';
+      return;
+    }
+
+    var chips = '<span class="t-xs subtle nowrap" style="margin-right:2px">Still needed</span>';
+    for (var m = 0; m < missing.length; m++) {
+      chips += '<button class="chip" type="button" style="height:24px;font-size:11px" data-go="' + missing[m].go + '">' +
+        missing[m].label + '</button>';
+    }
+    foot.innerHTML = '<span class="chips" style="align-items:center">' + chips + '</span>';
+
+    var gos = foot.querySelectorAll('[data-go]');
+    for (var g = 0; g < gos.length; g++) {
+      gos[g].addEventListener('click', function () {
+        var parts = this.getAttribute('data-go').split(':');
+        if (parts[0] === 'dim') { scrollToDim(parts[1]); } else { focusBox(parts[1]); }
+      });
+    }
+  }
+
+  document.getElementById('submit-btn').addEventListener('click', function () {
+    if (done() !== 8) { return; }
+    state.submitting = true;
+    refresh();
+    FakeAPI.submitRubric({ scores: state.scores, partner: 'Adeeba Kishwar' }).then(function (res) {
+      state.submitting = false;
+      state.submitted = true;
+      CaseGrid.syncChrome();
+      renderDone(res);
+      CaseGrid.toast('Rubric sent to Adeeba Kishwar', 'ok',
+        'You earned a credit. Balance is now ' + res.credits + '.');
+    });
+  });
+
+  document.getElementById('save-btn').addEventListener('click', function () {
+    var b = this;
+    b.disabled = true;
+    b.innerHTML = '<span class="spinner"></span>Saving';
+    FakeAPI.defer(function () {
+      b.disabled = false;
+      b.innerHTML = CaseGrid.icon('checkSm', 14) + 'Draft saved';
+    }, 700);
+  });
+
+  function renderDone(res) {
+    var avg = CaseGrid.average(state.scores);
+    document.querySelector('.modal').innerHTML =
+      '<div class="modal__body" style="text-align:center;padding:48px 40px">' +
+      '<div style="width:52px;height:52px;border-radius:999px;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 16px">' + icon('check', 26) + '</div>' +
+      '<h2 class="t-h1">Rubric submitted</h2>' +
+      '<p class="t-body muted" style="margin:8px auto 0;max-width:44ch">Adeeba has been sent an average of ' + avg.toFixed(1) +
+      ' out of 5 across six dimensions, with both of your comments. Sent at ' + res.submittedAt + '.</p>' +
+      '<div class="grid grid--3" style="gap:12px;margin-top:24px;text-align:left">' +
+      tile('Credit earned', '+1', 'Balance now ' + res.credits) +
+      tile('Reliability', '96%', 'Unchanged') +
+      tile('Session', 'Complete', 'Half 2 unlocks at 11:50 PM') + '</div>' +
+      '<div class="row" style="justify-content:center;gap:10px;margin-top:28px">' +
+      '<a class="btn btn--primary" href="02-dashboard.html">Back to dashboard</a>' +
+      '<a class="btn" href="09-credit-ledger.html">See the ledger entry</a></div></div>';
+
+    document.querySelector('.gate-bar').outerHTML =
+      '<div class="gate-bar" style="background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok)">' +
+      icon('checkSm', 14) + 'Rubric submitted. The session is now unlocked for both of you.</div>';
+
+    function tile(k, v, note) {
+      return '<div class="card" style="padding:12px 14px"><div class="t-label">' + k + '</div>' +
+        '<div style="font-size:18px;font-weight:650;margin-top:2px">' + v + '</div>' +
+        '<div class="t-xs subtle">' + note + '</div></div>';
+    }
+  }
+
+  renderDims();
+  renderComments();
+  refresh();
+})();
+</script>
+</body>
+</html>

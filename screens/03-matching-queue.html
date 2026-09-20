@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Matching - CaseGrid</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body data-flow="match">
+<div class="app" data-screen="queue" data-title="Find a case partner" data-section="Practice">
+  <aside class="sidebar" id="cg-sidebar"></aside>
+  <div class="main">
+    <header class="topbar" id="cg-topbar"></header>
+    <div id="cg-flow"></div>
+    <main class="content">
+
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) 352px;align-items:start;max-width:1160px">
+
+        <section class="card" id="queue-card" style="min-height:480px"></section>
+
+        <div class="stack">
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Matching on</h2>
+              <span class="badge badge--accent" id="pool-badge"></span>
+            </div>
+            <div class="card__body" style="padding-top:14px" id="criteria"></div>
+          </section>
+
+          <section class="card">
+            <div class="card__head">
+              <h2 class="t-h2">Online in your tier</h2>
+              <span class="badge"><span class="dot dot--live"></span><b id="online-n">14</b></span>
+            </div>
+            <div class="card__body card__body--flush" id="peers" style="padding:8px 0"></div>
+            <div class="card__foot">
+              <span id="parity-note">Advanced peers can also be matched with Intermediate.</span>
+            </div>
+          </section>
+
+          <div class="callout callout--lock" id="parity-card"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon, D = CaseGrid.data;
+  var card = document.getElementById('queue-card');
+  var timerId = null, tickId = null, elapsed = 0, online = D.queue.onlineInTier;
+
+  document.getElementById('pool-badge').textContent = 'Pool of ' + (online + 3);
+
+  document.getElementById('criteria').innerHTML =
+    crit('users', 'Track', D.queue.matchOn.track, 'Only Consulting-track peers are proposed.') +
+    crit('trend', 'Tier', D.queue.matchOn.tier + ' (22 cases)', 'Advanced, or Intermediate with 12+ cases.') +
+    crit('clock', 'Window', D.queue.matchOn.window, 'Your calibrated practice hours.') +
+    crit('book', 'Case pool', '31 of 40 unseen', 'Cases you have already run are skipped.');
+
+  function crit(ic, label, value, note) {
+    return '<div class="row" style="gap:12px;padding:9px 0;align-items:flex-start;border-bottom:1px solid var(--border-subtle)">' +
+      '<span style="color:var(--text-subtle);margin-top:2px">' + icon(ic, 16) + '</span>' +
+      '<div style="min-width:0"><div class="t-label">' + label + '</div>' +
+      '<div style="font-size:13px;font-weight:550;margin-top:1px">' + value + '</div>' +
+      '<div class="t-xs subtle">' + note + '</div></div></div>';
+  }
+
+  /* Peer list */
+  (function () {
+    var out = '';
+    var pool = D.peers.filter(function (p) { return p.online; });
+    for (var i = 0; i < pool.length; i++) {
+      var p = pool[i];
+      var eligible = p.tier === 'Advanced' || (p.tier === 'Intermediate' && p.casesDone >= 12);
+      out += '<div class="row" style="gap:10px;padding:8px 20px">' +
+        '<span class="avatar avatar--soft">' + p.initials + '</span>' +
+        '<div style="min-width:0;flex:1">' +
+        '<div style="font-size:13px;font-weight:550">' + p.name + '</div>' +
+        '<div class="t-xs subtle">' + p.tier + ' · ' + p.track + ' · ' + p.casesDone + ' cases</div></div>' +
+        (eligible
+          ? '<span class="badge badge--ok"><span class="dot dot--live"></span>Eligible</span>'
+          : '<span class="badge">' + icon('lock', 12) + 'Tier gap</span>') +
+        '</div>';
+    }
+    document.getElementById('peers').innerHTML = out;
+  })();
+
+  document.getElementById('parity-card').innerHTML = icon('lock', 16) +
+    '<div><strong>Tier parity rule</strong><span class="muted">A Novice can only be matched with other Novices for their first 8 cases. ' +
+    'Nikhil Ruthwik (3 cases) is online now but sits outside your pool for that reason. ' +
+    'This is a calibration guard, not a restriction on either account - he becomes matchable to you at case 9.</span></div>';
+
+  /* ---------------- searching state ---------------- */
+  function renderSearching() {
+    card.innerHTML =
+      '<div class="card__head"><h2 class="t-h2">Searching for a partner</h2>' +
+      '<span class="badge badge--accent"><span class="spinner" style="width:11px;height:11px;border-width:1.5px"></span>Live</span></div>' +
+      '<div class="card__body" style="padding:40px 32px 32px;text-align:center">' +
+      '<div class="radar"><span class="radar__ring"></span><span class="radar__ring"></span><span class="radar__ring"></span>' +
+      '<span class="radar__core">' + icon('users', 26) + '</span></div>' +
+      '<h3 class="t-h1" style="margin-top:28px"><span id="online-count">' + online + '</span> Advanced Consulting peers online</h3>' +
+      '<p class="t-body muted" style="margin:8px auto 0;max-width:44ch">We are holding for a partner whose practice window overlaps yours and who has not run the Kirana case yet.</p>' +
+      '<div class="row" style="justify-content:center;gap:28px;margin-top:28px">' +
+      metric('Elapsed', '<span id="elapsed" class="tnum">00:00</span>') +
+      metric('Queue position', '<span class="tnum">2nd</span>') +
+      metric('Typical wait', '<span class="tnum">1m 40s</span>') +
+      '</div>' +
+      '<div class="bar" style="max-width:320px;margin:28px auto 0"><div class="bar__fill" id="search-bar" style="width:8%"></div></div>' +
+      '<div class="row" style="justify-content:center;gap:10px;margin-top:28px">' +
+      '<button class="btn" id="cancel-btn" type="button">' + icon('x', 15) + 'Cancel search</button>' +
+      '<button class="btn btn--ghost" id="widen-btn" type="button">Widen to Intermediate</button>' +
+      '</div>' +
+      '<p class="t-xs subtle" style="margin-top:14px">Cancelling while searching is free. Credits are only spent once a session starts.</p>' +
+      '</div>';
+
+    var el = document.getElementById('elapsed');
+    tickId = CaseGrid.startClock(el, 0, 'up', function (t) {
+      var bar = document.getElementById('search-bar');
+      if (bar) { bar.style.width = Math.min(96, 8 + t * 20) + '%'; }
+      if (t > 0 && t % 2 === 0) {
+        online += (Math.random() > .5 ? 1 : -1);
+        var oc = document.getElementById('online-count');
+        if (oc) { oc.textContent = online; }
+        document.getElementById('online-n').textContent = online;
+      }
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', function () {
+      stop();
+      renderCancelled();
+      CaseGrid.toast('Search cancelled', null, 'No credits were spent. You can requeue any time.');
+    });
+    document.getElementById('widen-btn').addEventListener('click', function () {
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner"></span>Widening';
+      document.getElementById('parity-note').textContent = 'Pool widened: Intermediate peers with 12+ cases are now included.';
+      CaseGrid.toast('Pool widened', 'ok', 'Intermediate peers with 12 or more cases are now eligible.');
+    });
+
+    timerId = FakeAPI.findMatch().then(function (res) {
+      stop();
+      renderMatched(res);
+      CaseGrid.toast('Matched with ' + res.partner.name, 'ok',
+        'You interview first. Joining spends nothing until the session starts.');
+    });
+  }
+
+  function metric(label, value) {
+    return '<div><div class="t-label">' + label + '</div>' +
+      '<div style="font-size:18px;font-weight:640;margin-top:2px">' + value + '</div></div>';
+  }
+
+  function stop() {
+    if (tickId) { clearInterval(tickId); tickId = null; }
+  }
+
+  /* ---------------- matched state ---------------- */
+  function renderMatched(res) {
+    var p = res.partner, m = res.match;
+    card.classList.add('fade-in');
+    card.innerHTML =
+      '<div class="card__head"><h2 class="t-h2">Partner found</h2>' +
+      '<span class="badge badge--ok">' + icon('checkSm', 12) + 'Matched in 4s</span></div>' +
+      '<div class="card__body" style="padding:32px">' +
+
+      '<div class="row" style="gap:28px;justify-content:center">' +
+      person('JK', 'Jampana Karthik', 'You · Advanced · 22 cases', true) +
+      '<div style="text-align:center;color:var(--text-subtle)">' + icon('refresh', 22) +
+      '<div class="t-xs" style="margin-top:6px">paired</div></div>' +
+      person(p.initials, p.name, p.tier + ' · ' + p.track + ' · ' + p.casesDone + ' cases', false) +
+      '</div>' +
+
+      '<div class="grid grid--3" style="gap:12px;margin-top:28px">' +
+      fact('book', 'Case', m.caseTitle) +
+      fact('users', 'First interviewer', m.firstInterviewer + ' (then you swap)') +
+      fact('clock', 'Starts in', m.startsIn + ' · 45 min each way') +
+      '</div>' +
+
+      '<div class="callout callout--accent" style="margin-top:20px">' + icon('info', 16) +
+      '<div><strong>You interview first</strong><span class="muted">You will see the solution key and the exhibits. ' +
+      'Conducting a case earns you a credit; you will spend one when Adeeba interviews you in the second half.</span></div></div>' +
+
+      '<div class="row" style="gap:10px;margin-top:24px">' +
+      '<a class="btn btn--primary btn--lg" style="flex:1" href="06-split-view.html">' + icon('play', 16) + 'Join session</a>' +
+      '<button class="btn btn--lg" type="button" id="decline-btn">Decline match</button>' +
+      '</div>' +
+      '<p class="t-xs subtle" style="margin-top:12px;text-align:center">Declining now is free. You get two free declines a day before matching slows you down.</p>' +
+      '</div>';
+
+    document.getElementById('decline-btn').addEventListener('click', function () {
+      elapsed = 0;
+      renderSearching();
+    });
+
+    function person(initials, name, meta, isYou) {
+      return '<div style="text-align:center">' +
+        '<span class="avatar avatar--xl ' + (isYou ? 'avatar--ring' : 'avatar--soft') + '" style="margin:0 auto">' + initials + '</span>' +
+        '<div style="font-weight:620;margin-top:10px">' + name + '</div>' +
+        '<div class="t-xs subtle">' + meta + '</div></div>';
+    }
+    function fact(ic, label, value) {
+      return '<div class="card" style="padding:12px 14px">' +
+        '<div class="row" style="gap:6px;color:var(--text-subtle)">' + icon(ic, 14) + '<span class="t-label" style="color:inherit">' + label + '</span></div>' +
+        '<div style="font-size:13px;font-weight:550;margin-top:5px;line-height:1.35">' + value + '</div></div>';
+    }
+  }
+
+  /* ---------------- cancelled / empty state ---------------- */
+  function renderCancelled() {
+    card.innerHTML =
+      '<div class="card__head"><h2 class="t-h2">Search cancelled</h2></div>' +
+      '<div class="empty" style="padding:64px 24px">' +
+      '<div class="empty__icon">' + icon('users', 22) + '</div>' +
+      '<h3 class="t-h2">You are not in the queue</h3>' +
+      '<p>No credits were spent. Eleven Advanced peers are still online, and the queue usually clears in under two minutes at this hour.</p>' +
+      '<div class="row" style="justify-content:center;gap:10px;margin-top:24px">' +
+      '<button class="btn btn--primary" id="restart-btn" type="button">' + icon('refresh', 15) + 'Search again</button>' +
+      '<a class="btn" href="10-case-library.html">Practise solo instead</a></div></div>';
+    document.getElementById('restart-btn').addEventListener('click', renderSearching);
+  }
+
+  renderSearching();
+})();
+</script>
+</body>
+</html>
