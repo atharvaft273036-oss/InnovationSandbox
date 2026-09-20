@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CaseGrid - peer case practice for MBA students</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .site { max-width: 1240px; margin: 0 auto; padding: 0 var(--s7); }
+
+  .sitebar {
+    position: sticky; top: 0; z-index: 40; height: 68px;
+    background: rgba(8, 8, 11, .78); backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .sitebar__inner { height: 68px; display: flex; align-items: center; gap: var(--s6); }
+  .sitebar__links { display: flex; gap: var(--s5); margin-left: var(--s6); }
+  .sitebar__links a { font-size: 13px; font-weight: 520; color: var(--text-muted); transition: color .14s ease; }
+  .sitebar__links a:hover { color: var(--n-950); }
+
+  .brand { display: flex; align-items: center; gap: var(--s3); }
+  .brand__mark {
+    width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--accent);
+    display: grid; place-items: center; color: #fff;
+    box-shadow: 0 6px 22px -6px rgba(229, 9, 20, .95);
+  }
+  .brand__name { font-size: 17px; font-weight: 700; letter-spacing: -.03em; color: var(--n-950); }
+
+  /* ---- hero ---- */
+  .hero {
+    position: relative; overflow: hidden;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: -20% -10% auto -10%; height: 760px;
+    background:
+      radial-gradient(760px 420px at 18% 12%, rgba(229, 9, 20, .26), transparent 62%),
+      radial-gradient(680px 380px at 82% 4%, rgba(96, 60, 220, .16), transparent 60%);
+    pointer-events: none;
+  }
+  .hero__grid {
+    position: relative;
+    display: grid; grid-template-columns: minmax(0, 1fr) 520px;
+    gap: var(--s16); align-items: center;
+    padding: 76px 0 84px;
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: var(--s2);
+    height: 28px; padding: 0 var(--s3) 0 var(--s2);
+    border-radius: var(--r-full); border: 1px solid var(--accent-border);
+    background: var(--accent-soft); color: var(--accent-text);
+    font-size: 12px; font-weight: 620;
+  }
+  .hero h1 {
+    font-size: 54px; line-height: 1.04; font-weight: 720; letter-spacing: -.042em;
+    margin-top: var(--s5); color: #fff;
+  }
+  .hero h1 em { font-style: normal; color: var(--accent-text); }
+  .hero__sub { font-size: 17px; line-height: 1.6; color: var(--text-muted); margin-top: var(--s5); max-width: 52ch; }
+
+  .signin { margin-top: var(--s7); max-width: 480px; }
+  .signin__row { display: flex; gap: var(--s2); }
+  .signin__row .input { height: 46px; font-size: 14.5px; }
+  .signin__row .btn { height: 46px; padding: 0 var(--s6); font-size: 14px; flex: none; }
+  .signin__alt { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s4); }
+
+  .proof { display: flex; gap: var(--s8); margin-top: var(--s10); flex-wrap: wrap; }
+  .proof__n { font-size: 26px; font-weight: 700; letter-spacing: -.03em; color: #fff; font-variant-numeric: tabular-nums; }
+  .proof__k { font-size: 12px; color: var(--text-subtle); margin-top: 2px; }
+
+  /* ---- hero device ---- */
+  .device {
+    border: 1px solid var(--border-strong); border-radius: var(--r-xl);
+    background: var(--surface); overflow: hidden;
+    box-shadow: var(--sh-xl), 0 0 90px -40px rgba(229, 9, 20, .55);
+    transform: perspective(1400px) rotateY(-7deg) rotateX(2deg);
+  }
+  .device__bar {
+    height: 40px; background: #0a0a0e; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: var(--s3); padding: 0 var(--s4);
+  }
+  .device__split { display: grid; grid-template-columns: 1fr 1px 1fr; background: var(--border); }
+  .device__pane { background: var(--bg); padding: var(--s4); min-height: 268px; }
+
+  /* ---- sections ---- */
+  .section { padding: 84px 0; border-bottom: 1px solid var(--border-subtle); }
+  .section__head { max-width: 640px; margin-bottom: var(--s8); }
+  .section__head h2 { font-size: 32px; font-weight: 700; letter-spacing: -.032em; line-height: 1.16; color: #fff; }
+  .section__head p { font-size: 15px; color: var(--text-muted); margin-top: var(--s3); line-height: 1.62; }
+
+  .step-card { padding: var(--s6); position: relative; }
+  .step-card__n {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    color: var(--accent-text); text-transform: uppercase;
+  }
+  .step-card h3 { font-size: 17px; font-weight: 640; letter-spacing: -.018em; margin-top: var(--s3); color: #fff; }
+  .step-card p { font-size: 13.5px; color: var(--text-muted); margin-top: var(--s2); line-height: 1.6; }
+
+  .dim-row {
+    display: grid; grid-template-columns: 30px 200px 1fr; gap: var(--s4);
+    align-items: center; padding: var(--s4) var(--s5);
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background .14s ease;
+  }
+  .dim-row:last-child { border-bottom: 0; }
+  .dim-row:hover { background: var(--surface-alt); }
+  .dim-row__n {
+    width: 26px; height: 26px; border-radius: var(--r-sm);
+    background: var(--n-150); color: var(--text-subtle);
+    display: grid; place-items: center; font-size: 12px; font-weight: 680;
+  }
+
+  .rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--s3); }
+  .rail__tile {
+    border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface);
+    padding: var(--s5) var(--s4); text-align: left;
+    transition: transform .16s cubic-bezier(.4,0,.2,1), border-color .16s ease, background .16s ease;
+  }
+  .rail__tile:hover { transform: translateY(-3px); border-color: var(--accent-border); background: var(--surface-hi); }
+  .rail__n { font-size: 26px; font-weight: 700; letter-spacing: -.03em; color: #fff; font-variant-numeric: tabular-nums; }
+
+  .cta {
+    text-align: center; padding: 96px 0;
+    background: radial-gradient(700px 300px at 50% 0%, rgba(229, 9, 20, .18), transparent 65%);
+  }
+  .cta h2 { font-size: 38px; font-weight: 720; letter-spacing: -.035em; color: #fff; line-height: 1.12; }
+
+  .foot { padding: var(--s8) 0 var(--s12); }
+  .foot__links { display: flex; gap: var(--s6); flex-wrap: wrap; }
+  .foot__links a { font-size: 13px; color: var(--text-subtle); }
+  .foot__links a:hover { color: var(--n-900); }
+</style>
+</head>
+<body>
+
+<!-- ======================= top bar ======================= -->
+<header class="sitebar">
+  <div class="site sitebar__inner">
+    <a class="brand" href="index.html">
+      <span class="brand__mark" id="brand-mark"></span>
+      <span class="brand__name">CaseGrid</span>
+    </a>
+    <nav class="sitebar__links" aria-label="Sections">
+      <a href="#how">How a session runs</a>
+      <a href="#rubric">The rubric</a>
+      <a href="#cases">Cases</a>
+      <a href="screens/11-pricing.html">Pricing</a>
+    </nav>
+    <div class="spacer"></div>
+    <a class="btn btn--ghost btn--sm" href="allScreens.html">All screens</a>
+    <a class="btn btn--sm" href="screens/02-dashboard.html">Sign in</a>
+    <a class="btn btn--primary btn--sm" href="screens/01-onboarding.html">Start calibration</a>
+  </div>
+</header>
+
+<!-- ======================= hero ======================= -->
+<section class="hero">
+  <div class="site hero__grid">
+    <div>
+      <span class="eyebrow"><span class="dot dot--live"></span> <span id="live-count"></span></span>
+
+      <h1>Case practice that<br>actually <em>keeps score</em>.</h1>
+
+      <p class="hero__sub">
+        Find a peer in your track and tier, run a 45-minute case, then swap chairs. Your interviewer
+        cannot leave without scoring you on six dimensions and writing two comments. Credits keep it
+        even: conduct a case, earn one; sit in the chair, spend one.
+      </p>
+
+      <form class="signin" id="signin-form" novalidate>
+        <label class="field__label" for="email" style="display:block;margin-bottom:8px">Start with your email</label>
+        <div class="signin__row">
+          <div class="input-affix" style="flex:1">
+            <span id="mail-icon"></span>
+            <input class="input" id="email" type="email" placeholder="you@yourcampus.edu" autocomplete="email" aria-describedby="email-msg">
+          </div>
+          <button class="btn btn--primary" type="submit" id="start-btn">Start calibration</button>
+        </div>
+        <div class="field__hint" id="email-msg" style="margin-top:8px">
+          Any email works. Calibration takes about two minutes and sets your tier.
+        </div>
+        <div class="signin__alt">
+          <span class="t-xs subtle">Already calibrated?</span>
+          <a class="btn btn--sm" href="screens/02-dashboard.html" id="resume-btn">
+            <span class="avatar" style="width:18px;height:18px;font-size:8px">JK</span>
+            Continue as Jampana Karthik
+          </a>
+        </div>
+      </form>
+
+      <div class="proof" id="proof"></div>
+    </div>
+
+    <!-- live session preview -->
+    <div class="device" aria-hidden="true">
+      <div class="device__bar">
+        <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:grid;place-items:center" id="dev-mark"></span>
+        <span class="t-xs" style="color:var(--n-700);font-weight:620">Kirana Quick-Commerce Margin Squeeze</span>
+        <div class="spacer"></div>
+        <span class="badge badge--accent" style="height:20px">32:14</span>
+      </div>
+      <div class="device__split">
+        <div class="device__pane" id="dev-left"></div>
+        <div></div>
+        <div class="device__pane" id="dev-right"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= how it runs ======================= -->
+<section class="section" id="how">
+  <div class="site">
+    <div class="section__head">
+      <h2>One session, two chairs, ninety minutes.</h2>
+      <p>Every match is symmetric. You interview first or you answer first, and whichever it is, you do the other half before the session closes.</p>
+    </div>
+    <div class="grid grid--3" id="steps"></div>
+
+    <div class="grid grid--2" style="margin-top:20px;gap:20px">
+      <div class="callout callout--accent" id="credit-callout"></div>
+      <div class="callout" id="freeze-callout"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= rubric ======================= -->
+<section class="section" id="rubric">
+  <div class="site">
+    <div class="section__head">
+      <h2>Six dimensions, scored one to five, every single time.</h2>
+      <p>Not "that went well". Each dimension carries written anchors, so a 4 from a stranger in Hyderabad means the same thing as a 4 from your study group.</p>
+    </div>
+    <div class="card"><div class="card__body card__body--flush" id="dims"></div></div>
+  </div>
+</section>
+
+<!-- ======================= cases ======================= -->
+<section class="section" id="cases">
+  <div class="site">
+    <div class="section__head">
+      <h2>Forty cases written for the Indian campus context.</h2>
+      <p>Dark stores in eight cities, a dosa chain losing margin, a grinding unit being bought. Exhibit numbers reconcile, so two partners running the same case land on the same answer.</p>
+    </div>
+    <div class="rail" id="rail"></div>
+    <div class="row" style="margin-top:20px;gap:12px">
+      <a class="btn" href="screens/10-case-library.html">Browse the library</a>
+      <span class="t-xs subtle">Filter by type, difficulty and what your batch has already run.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= tonight ======================= -->
+<section class="section">
+  <div class="site">
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) 420px;gap:48px;align-items:center">
+      <div>
+        <div class="section__head" style="margin-bottom:var(--s6)">
+          <h2>Matching runs inside your practice window.</h2>
+          <p>You set the hours you will actually show up for. CaseGrid only ever proposes sessions inside them, and only with peers in your track whose tier is close enough for the feedback to be worth reading.</p>
+        </div>
+        <div class="row" style="gap:12px">
+          <a class="btn btn--primary" href="screens/03-matching-queue.html">See the matching queue</a>
+          <a class="btn" href="screens/06-split-view.html">Open a live session</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__head">
+          <h3 class="t-h2">Online right now</h3>
+          <span class="badge badge--ok"><span class="dot dot--live"></span><span id="online-n"></span></span>
+        </div>
+        <div class="card__body card__body--flush" id="peers"></div>
+        <div class="card__foot" id="peers-foot"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= cta ======================= -->
+<section class="cta">
+  <div class="site">
+    <h2>Your next case is at 11 PM.</h2>
+    <p class="t-body muted" style="max-width:48ch;margin:16px auto 0">
+      Rs. 499 a month, or Rs. 1,999 for the whole placement season. Unlimited sessions on both.
+    </p>
+    <div class="row" style="justify-content:center;gap:12px;margin-top:28px">
+      <a class="btn btn--primary btn--lg" href="screens/01-onboarding.html">Start calibration</a>
+      <a class="btn btn--lg" href="screens/11-pricing.html">Compare the plans</a>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="site row" style="align-items:flex-start;gap:32px">
+    <div class="brand">
+      <span class="brand__mark" id="foot-mark" style="width:26px;height:26px"></span>
+      <span class="brand__name" style="font-size:15px">CaseGrid</span>
+    </div>
+    <div class="spacer"></div>
+    <nav class="foot__links" aria-label="Footer">
+      <a href="screens/02-dashboard.html">Dashboard</a>
+      <a href="screens/10-case-library.html">Case library</a>
+      <a href="screens/09-credit-ledger.html">Credits</a>
+      <a href="screens/11-pricing.html">Pricing</a>
+      <a href="allScreens.html">All screens</a>
+    </nav>
+  </div>
+  <div class="site" style="margin-top:24px">
+    <p class="t-xs subtle">Built for Great Lakes Institute of Management, Chennai. Prototype build 1.2 &mdash; seeded data, no live sessions.</p>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon, D = CaseGrid.data;
+
+  document.getElementById('brand-mark').innerHTML = icon('layers', 17);
+  document.getElementById('foot-mark').innerHTML = icon('layers', 14);
+  document.getElementById('dev-mark').innerHTML = icon('layers', 10);
+  document.getElementById('mail-icon').innerHTML = icon('mail', 16);
+
+  var onlinePeers = D.peers.filter(function (p) { return p.online; });
+
+  document.getElementById('live-count').textContent =
+    D.queue.onlineInTier + ' students practising right now';
+
+  /* ---------- hero proof points, all from the seed ---------- */
+  document.getElementById('proof').innerHTML =
+    proof('214', 'students on campus') +
+    proof(D.cases.length, 'cases, five types') +
+    proof(D.rubric.length, 'scored dimensions') +
+    proof('45', 'minutes per case');
+
+  function proof(n, k) {
+    return '<div><div class="proof__n">' + n + '</div><div class="proof__k">' + k + '</div></div>';
+  }
+
+  /* ---------- hero device: a miniature of the split view ---------- */
+  document.getElementById('dev-left').innerHTML =
+    '<div class="row" style="gap:6px;margin-bottom:12px">' +
+    '<span class="pane__role pane__role--int" style="font-size:10px">' + icon('monitor', 12) + 'Interviewer</span></div>' +
+    mini('Solution key', 'Contribution per order fell Rs. 21 to Rs. 4. Rider cost is 70% of the gap.', true) +
+    '<div style="height:10px"></div>' +
+    miniRow('Exhibit 1', 'Released', 'ok') +
+    miniRow('Exhibit 2', 'Release', 'accent') +
+    '<div style="height:10px"></div>' +
+    '<div class="badge badge--warn" style="width:100%;justify-content:center">' + icon('alert', 12) + 'Rubric required before exit</div>';
+
+  document.getElementById('dev-right').innerHTML =
+    '<div class="row" style="gap:6px;margin-bottom:12px">' +
+    '<span class="pane__role pane__role--cand" style="font-size:10px">' + icon('pen', 12) + 'Candidate</span></div>' +
+    '<div class="tnum" style="font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1">32:14</div>' +
+    '<div class="bar" style="margin-top:10px"><div class="bar__fill" style="width:28%"></div></div>' +
+    '<div style="height:14px"></div>' +
+    '<div class="scratchpad" style="min-height:0;padding:10px 12px">' +
+    '<div class="scratchpad__note" style="font-size:12px;line-height:22px">CM/order: 21 -&gt; 4</div>' +
+    '<div class="scratchpad__note" style="font-size:12px;line-height:22px">AOV flat, so it is cost</div>' +
+    '<div class="scratchpad__note scratchpad__note--ink2" style="font-size:12px;line-height:22px">Rider 38 -&gt; 61 <span class="scratchpad__caret" style="height:12px;width:5px"></span></div>' +
+    '</div>';
+
+  function mini(title, body, locked) {
+    return '<div class="card" style="padding:10px 12px">' +
+      '<div class="row" style="gap:6px"><span style="color:var(--text-subtle)">' + icon(locked ? 'eye' : 'book', 12) + '</span>' +
+      '<span class="t-xs" style="font-weight:640">' + title + '</span></div>' +
+      '<p class="t-xs subtle" style="margin-top:4px;line-height:1.45">' + body + '</p></div>';
+  }
+  function miniRow(name, action, tone) {
+    return '<div class="row" style="gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-sm);margin-top:6px">' +
+      '<span style="color:var(--text-subtle)">' + icon(tone === 'ok' ? 'unlock' : 'lock', 12) + '</span>' +
+      '<span class="t-xs">' + name + '</span><span class="spacer"></span>' +
+      '<span class="badge badge--' + tone + '" style="height:18px;font-size:10px">' + action + '</span></div>';
+  }
+
+  /* ---------- how a session runs ---------- */
+  document.getElementById('steps').innerHTML =
+    step('Step one', 'Match', 'You queue inside your practice window. CaseGrid pairs you on track and tier, skips cases either of you has run, and tells you who takes the first chair. Typical wait is under two minutes.', 'users') +
+    step('Step two', 'Run the case', 'Forty-five minutes. The interviewer holds the solution key and releases exhibits one at a time. The candidate gets a scratchpad and a channel to ask for data. Then you swap.', 'monitor') +
+    step('Step three', 'Score it', 'Six dimensions, one to five, plus two written comments. The session stays locked until the rubric is in, so nobody walks away with nothing.', 'clipboard');
+
+  function step(n, title, body, ic) {
+    return '<div class="card step-card">' +
+      '<div class="row" style="gap:10px"><span style="color:var(--accent-text)">' + icon(ic, 18) + '</span>' +
+      '<span class="step-card__n">' + n + '</span></div>' +
+      '<h3>' + title + '</h3><p>' + body + '</p></div>';
+  }
+
+  document.getElementById('credit-callout').innerHTML = icon('coin', 18) +
+    '<div><strong>Credits keep it even</strong><span class="muted">' +
+    'Conduct a case, earn one. Be interviewed, spend one. Cancel inside sixty minutes and it costs two, plus your reliability score. ' +
+    'You start with three, which is enough to be interviewed three times before you owe the pool anything.</span></div>';
+
+  document.getElementById('freeze-callout').innerHTML = icon('snowflake', 18) +
+    '<div><strong>One Syndicate Freeze Pass every 14 days</strong><span class="muted">' +
+    'Life happens during placement season. Give ninety minutes notice and you can reschedule once a fortnight with no credit cost and no hit to reliability.</span></div>';
+
+  /* ---------- the rubric ---------- */
+  var dims = '';
+  for (var i = 0; i < D.rubric.length; i++) {
+    var d = D.rubric[i];
+    dims += '<div class="dim-row">' +
+      '<span class="dim-row__n">' + (i + 1) + '</span>' +
+      '<span class="t-h3">' + d.label + '</span>' +
+      '<span class="t-sm muted">' + d.blurb + '</span>' +
+      '</div>';
+  }
+  document.getElementById('dims').innerHTML = dims;
+
+  /* ---------- case type rail ---------- */
+  var rail = '';
+  for (var t = 0; t < D.caseTypes.length; t++) {
+    var type = D.caseTypes[t];
+    var n = D.cases.filter(function (c) { return c.type === type; }).length;
+    rail += '<a class="rail__tile" href="screens/10-case-library.html">' +
+      '<div class="rail__n">' + n + '</div>' +
+      '<div class="t-sm" style="font-weight:600;margin-top:4px">' + type + '</div>' +
+      '<div class="t-xs subtle" style="margin-top:2px">' + exampleFor(type) + '</div></a>';
+  }
+  document.getElementById('rail').innerHTML = rail;
+
+  function exampleFor(type) {
+    var match = D.cases.filter(function (c) { return c.type === type; })[0];
+    return match ? match.title : '';
+  }
+
+  /* ---------- online now ---------- */
+  document.getElementById('online-n').textContent = onlinePeers.length + ' peers';
+  var list = '';
+  for (var p = 0; p < onlinePeers.length; p++) {
+    var peer = onlinePeers[p];
+    list += '<div class="row" style="gap:10px;padding:10px 20px;border-bottom:1px solid var(--border-subtle)">' +
+      '<span class="avatar avatar--soft">' + peer.initials + '</span>' +
+      '<div style="min-width:0;flex:1">' +
+      '<div class="t-sm" style="font-weight:570">' + peer.name + '</div>' +
+      '<div class="t-xs subtle">' + peer.tier + ' &middot; ' + peer.track + ' &middot; ' + peer.window + '</div></div>' +
+      '<span class="badge">' + peer.casesDone + ' cases</span></div>';
+  }
+  document.getElementById('peers').innerHTML = list;
+  document.getElementById('peers-foot').innerHTML =
+    icon('clock', 15) + '<span>Your window is ' + D.user.practiceWindow.label + ' IST.</span>';
+
+  /* ---------- sign in - any email, no domain rules ---------- */
+  var form = document.getElementById('signin-form');
+  var email = document.getElementById('email');
+  var msg = document.getElementById('email-msg');
+  var btn = document.getElementById('start-btn');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var value = email.value.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+      email.classList.add('input--invalid');
+      msg.innerHTML = '<span style="color:var(--danger);display:inline-flex;gap:6px;align-items:center">' +
+        icon('alert', 13) + 'Enter an email address so we can send your calibration link.</span>';
+      email.focus();
+      return;
+    }
+
+    email.classList.remove('input--invalid');
+    msg.textContent = 'Setting up your account.';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner spinner--invert"></span>Starting';
+
+    FakeAPI.defer(function () {
+      window.location.href = 'screens/01-onboarding.html?email=' + encodeURIComponent(value);
+    }, 700);
+  });
+
+  email.addEventListener('input', function () {
+    if (this.classList.contains('input--invalid')) {
+      this.classList.remove('input--invalid');
+      msg.textContent = 'Any email works. Calibration takes about two minutes and sets your tier.';
+    }
+  });
+})();
+</script>
+</body>
+</html>

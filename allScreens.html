@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>All screens - CaseGrid</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .hero {
+    border-bottom: 1px solid var(--border-subtle);
+    background:
+      radial-gradient(900px 340px at 12% -10%, rgba(229, 9, 20, .18), transparent 65%),
+      radial-gradient(700px 300px at 88% 0%, rgba(120, 60, 220, .10), transparent 60%),
+      var(--surface);
+  }
+  .hero__inner { max-width: 1280px; margin: 0 auto; padding: 44px 28px 40px; }
+  .mark-lg {
+    width: 44px; height: 44px; border-radius: var(--r-md); background: var(--accent);
+    display: grid; place-items: center; color: #fff;
+    box-shadow: 0 8px 28px -8px rgba(229, 9, 20, .95);
+  }
+  .facts { display: flex; gap: 40px; margin-top: 28px; flex-wrap: wrap; }
+  .fact__k { font-size: 10.5px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; color: var(--text-subtle); }
+  .fact__v { font-size: 14px; font-weight: 620; margin-top: 4px; color: var(--n-950); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero__inner">
+    <div class="row" style="gap:14px">
+      <span class="mark-lg" id="mark"></span>
+      <div>
+        <div class="row" style="gap:10px">
+          <h1 class="t-h1">CaseGrid</h1>
+          <span class="badge badge--accent">Prototype build 1.2</span>
+        </div>
+        <p class="t-sm muted" style="margin-top:2px">Peer-to-peer mock interview platform for MBA students &middot; every screen, at screenshot size</p>
+      </div>
+      <div class="spacer"></div>
+      <a class="btn" href="index.html">Back to landing</a>
+      <a class="btn btn--primary" href="screens/06-split-view.html" id="hero-cta">Open the split view</a>
+    </div>
+
+    <div class="facts">
+      <div><div class="fact__k">Signed-in user</div><div class="fact__v">Jampana Karthik &middot; PGPM 2026-27</div></div>
+      <div><div class="fact__k">Institute</div><div class="fact__v">Great Lakes Institute of Management, Chennai</div></div>
+      <div><div class="fact__k">Track and tier</div><div class="fact__v">Consulting &middot; Advanced &middot; 22 cases</div></div>
+      <div><div class="fact__k">Screens</div><div class="fact__v">11, all at 1440 &times; 900</div></div>
+      <div><div class="fact__k">Backend</div><div class="fact__v">None. Seeded data, faked latency.</div></div>
+    </div>
+  </div>
+</header>
+
+<main class="gallery">
+  <div class="row row--between" style="margin-bottom:20px">
+    <h2 class="t-h2">All screens</h2>
+    <span class="t-xs subtle">Click a card to open it full size. Refreshing any screen resets it to the seeded state.</span>
+  </div>
+  <div class="gallery__grid" id="grid"></div>
+
+  <div class="callout" style="margin-top:36px" id="note"></div>
+</main>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var icon = CaseGrid.icon;
+  document.getElementById('mark').innerHTML = icon('layers', 24);
+
+  var SCREENS = [
+    { n: '01', file: 'screens/01-onboarding.html', name: 'Onboarding and calibration',
+      desc: 'Four steps: email, target track, case count with the tier resolving live, practice window.', thumb: 'onboard' },
+    { n: '02', file: 'screens/02-dashboard.html', name: 'Dashboard',
+      desc: 'Credits, reliability, next session, recent scores and a six-session rubric trend.', thumb: 'dashboard' },
+    { n: '03', file: 'screens/03-matching-queue.html', name: 'Matching queue',
+      desc: 'Searching state with a live counter and elapsed timer. Resolves to a match after about four seconds.', thumb: 'queue' },
+    { n: '04', file: 'screens/04-case-terminal-interviewer.html', name: 'Case terminal - interviewer',
+      desc: 'Narrative, collapsible solution key, three prompt triggers, exhibits with individual Release buttons.', thumb: 'interviewer' },
+    { n: '05', file: 'screens/05-case-terminal-candidate.html', name: 'Case terminal - candidate',
+      desc: 'Countdown at 32:14, handwritten scratchpad, exhibit viewer waiting on a release, ask-for-data control.', thumb: 'candidate' },
+    { n: '06', file: 'screens/06-split-view.html', name: 'Split view',
+      desc: 'Both panes side by side. Releasing Exhibit 2 on the left unlocks it on the right, live.', thumb: 'split', hero: true },
+    { n: '07', file: 'screens/07-rubric-submission.html', name: 'Rubric submission',
+      desc: 'Six 1-5 scales with written anchors, two required comments with counters, submit blocked until all eight are done.', thumb: 'rubric' },
+    { n: '08', file: 'screens/08-feedback-received.html', name: 'Feedback received',
+      desc: 'Radar of the six scores against your last five sessions, both interviewer comments, two growth areas.', thumb: 'feedback' },
+    { n: '09', file: 'screens/09-credit-ledger.html', name: 'Credit ledger',
+      desc: 'Earned, spent, a minus-two no-show penalty, a Freeze Pass, running balance and reliability recalculating.', thumb: 'ledger' },
+    { n: '10', file: 'screens/10-case-library.html', name: 'Case library',
+      desc: 'Forty cases, filters by type and difficulty, batch completion counts on every card.', thumb: 'library' },
+    { n: '11', file: 'screens/11-pricing.html', name: 'Pricing and season pass',
+      desc: 'Rs. 499 a month against Rs. 1,999 for the season, with a ten-row feature comparison.', thumb: 'pricing' }
+  ];
+
+  /* Wireframe thumbnails, drawn rather than screenshotted so they never go stale. */
+  var W = 320, H = 152;
+  var C = {
+    page: '#0b0b0f', card: '#16161d', line: '#2a2a34',
+    block: '#4a4a58', soft: '#2f2f3a', chrome: '#050507',
+    accent: '#e50914', accentSoft: 'rgba(229,9,20,.45)', ok: '#46d07a', danger: '#ff7a6b'
+  };
+
+  function r(x, y, w, h, fill, rx) {
+    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (rx == null ? 2 : rx) + '" fill="' + fill + '"/>';
+  }
+  function box(x, y, w, h, rx) {
+    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (rx == null ? 3 : rx) + '" fill="' + C.card + '" stroke="' + C.line + '"/>';
+  }
+  function lines(x, y, w, n, gap, fill) {
+    var s = '';
+    for (var i = 0; i < n; i++) { s += r(x, y + i * gap, w * (i % 3 === 2 ? .7 : 1), 3, fill || C.soft, 1.5); }
+    return s;
+  }
+  function shell(inner, opts) {
+    opts = opts || {};
+    var s = r(0, 0, W, H, C.page, 0);
+    if (opts.sidebar !== false) {
+      s += r(0, 0, 54, H, C.chrome, 0) + r(54, 0, 1, H, C.line, 0);
+      s += r(9, 9, 8, 8, C.accent, 2) + r(21, 11, 18, 4, '#6a6a7a', 1.5);
+      for (var i = 0; i < 6; i++) { s += r(9, 30 + i * 12, 34 - (i % 2) * 8, 4, i === 1 ? '#8a8a99' : '#33333f', 1.5); }
+      s += r(6, 28, 42, 8, 'rgba(255,255,255,.06)', 2) + r(6, 28, 1.5, 8, C.accent, 1);
+    }
+    if (opts.topbar !== false) {
+      s += r(55, 0, W, 18, '#0d0d12', 0) + r(0, 18, W, 1, C.line, 0);
+      s += r(64, 7, 34, 4, C.soft, 1.5);
+      s += r(238, 6, 30, 7, C.soft, 3) + r(272, 6, 30, 7, C.soft, 3) + '<circle cx="311" cy="9.5" r="5" fill="#33333f"/>';
+    }
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice">' + s + inner + '</svg>';
+  }
+
+  var THUMBS = {
+    onboard: function () {
+      var s = r(0, 0, W, H, C.page, 0) + r(0, 0, W, 18, '#0d0d12', 0) + r(0, 18, W, 1, C.line, 0) + r(12, 7, 30, 4, C.soft, 1.5);
+      for (var i = 0; i < 4; i++) {
+        s += '<circle cx="' + (104 + i * 38) + '" cy="34" r="6.5" fill="' + (i === 0 ? C.accent : C.soft) + '"/>';
+        if (i < 3) { s += r(112 + i * 38, 33, 22, 2, C.soft, 1); }
+      }
+      s += box(74, 52, 172, 88, 5);
+      s += r(86, 64, 78, 6, C.block, 2) + lines(86, 78, 140, 2, 8);
+      s += r(86, 98, 148, 14, C.soft, 3) + r(86, 116, 148, 14, C.soft, 3);
+      s += r(198, 120, 36, 10, C.accent, 3);
+      return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice">' + s + '</svg>';
+    },
+    dashboard: function () {
+      var s = '', i;
+      for (i = 0; i < 4; i++) {
+        s += box(62 + i * 64, 28, 56, 32) + r(68 + i * 64, 34, 20, 4, C.soft, 1.5) + r(68 + i * 64, 44, 30, 8, C.block, 2);
+      }
+      s += box(62, 68, 158, 74);
+      s += '<polygon points="72,124 96,116 120,110 144,104 168,94 198,82 198,132 72,132" fill="' + C.accent + '" fill-opacity=".14"/>';
+      s += '<polyline points="72,124 96,116 120,110 144,104 168,94 198,82" fill="none" stroke="' + C.accent + '" stroke-width="2"/>';
+      s += '<circle cx="198" cy="82" r="3.5" fill="' + C.accent + '"/>';
+      s += box(228, 68, 84, 74) + lines(236, 78, 66, 5, 11);
+      return shell(s);
+    },
+    queue: function () {
+      var s = '<circle cx="150" cy="84" r="44" fill="none" stroke="' + C.accentSoft + '"/>' +
+        '<circle cx="150" cy="84" r="29" fill="none" stroke="' + C.accentSoft + '"/>' +
+        '<circle cx="150" cy="84" r="15" fill="' + C.accent + '" fill-opacity=".30" stroke="' + C.accent + '"/>' +
+        r(118, 136, 64, 8, C.soft, 3);
+      s += box(244, 30, 68, 112) + lines(252, 40, 52, 7, 13);
+      return shell(s);
+    },
+    interviewer: function () { return pane(1, 'left'); },
+    candidate: function () { return pane(1, 'right'); },
+    split: function () { return pane(2); },
+    rubric: function () {
+      var s = r(0, 0, W, H, C.page, 0) + r(0, 0, W, 14, C.chrome, 0);
+      s += r(0, 14, W, H, 'rgba(0,0,0,.55)', 0);
+      s += '<rect x="44" y="26" width="232" height="114" rx="7" fill="#1a1a22" stroke="#3a3a46"/>';
+      s += r(56, 36, 80, 6, C.block, 2);
+      for (var i = 0; i < 4; i++) {
+        s += r(56, 52 + i * 18, 60, 4, C.soft, 1.5);
+        for (var j = 0; j < 5; j++) {
+          s += r(126 + j * 28, 48 + i * 18, 24, 11, j === 3 && i < 2 ? C.accent : '#26262e', 2);
+        }
+      }
+      s += r(56, 124, 60, 8, C.soft, 2) + r(216, 124, 48, 8, C.accent, 2);
+      return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice">' + s + '</svg>';
+    },
+    feedback: function () {
+      var s = box(62, 28, 120, 114);
+      var cx = 122, cy = 86, pts = [], pts2 = [];
+      for (var i = 0; i < 6; i++) {
+        var a = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+        pts.push((cx + Math.cos(a) * 39).toFixed(1) + ',' + (cy + Math.sin(a) * 39).toFixed(1));
+        var rr = [31, 31, 37, 30, 31, 29][i];
+        pts2.push((cx + Math.cos(a) * rr).toFixed(1) + ',' + (cy + Math.sin(a) * rr).toFixed(1));
+      }
+      s += '<polygon points="' + pts.join(' ') + '" fill="none" stroke="' + C.line + '"/>';
+      s += '<polygon points="' + pts2.join(' ') + '" fill="' + C.accent + '" fill-opacity=".22" stroke="' + C.accent + '" stroke-width="1.5"/>';
+      s += box(190, 28, 122, 114) + lines(198, 38, 100, 8, 12);
+      return shell(s);
+    },
+    ledger: function () {
+      var s = box(62, 28, 180, 114) + r(62, 28, 180, 13, '#1d1d25', 3);
+      for (var i = 0; i < 7; i++) {
+        s += r(70, 48 + i * 13, 100, 4, C.soft, 1.5);
+        s += r(196, 48 + i * 13, 16, 4, i === 3 ? C.danger : (i % 2 ? C.block : C.ok), 1.5);
+        s += r(218, 48 + i * 13, 14, 4, C.block, 1.5);
+      }
+      s += box(250, 28, 62, 114) + lines(258, 38, 46, 6, 12);
+      return shell(s);
+    },
+    library: function () {
+      var s = box(62, 26, 250, 18);
+      for (var i = 0; i < 4; i++) { s += r(69 + i * 30, 31, 24, 7, i === 1 ? C.accent : C.soft, 3.5); }
+      for (var row = 0; row < 3; row++) {
+        for (var col = 0; col < 4; col++) {
+          var x = 62 + col * 64, y = 52 + row * 32;
+          s += box(x, y, 56, 26);
+          s += r(x + 5, y + 5, 20, 4, C.soft, 1.5) + r(x + 5, y + 13, 42, 3, C.block, 1.5) + r(x + 5, y + 19, 30, 3, C.soft, 1.5);
+        }
+      }
+      return shell(s);
+    },
+    pricing: function () {
+      var s = r(118, 28, 84, 5, C.block, 2) + r(94, 38, 132, 4, C.soft, 2);
+      s += box(64, 52, 118, 58, 5);
+      s += r(74, 62, 40, 9, C.block, 2) + lines(74, 78, 90, 3, 8);
+      s += '<rect x="190" y="52" width="118" height="58" rx="5" fill="#1b1319" stroke="' + C.accentSoft + '" stroke-width="1.5"/>';
+      s += r(200, 62, 40, 9, C.accent, 2) + lines(200, 78, 90, 3, 8);
+      s += box(64, 118, 244, 26) + lines(72, 126, 60, 2, 8);
+      return shell(s, { topbar: true });
+    }
+  };
+
+  function pane(count, side) {
+    var s = r(0, 0, W, H, C.page, 0) + r(0, 0, W, 16, C.chrome, 0);
+    s += r(8, 6, 8, 5, C.accent, 1.5) + r(20, 6, 26, 4, '#5a5a68', 1.5) + r(248, 5, 36, 7, 'rgba(255,255,255,.12)', 2);
+    function column(x, w, accent) {
+      var o = r(x, 16, w, H, C.page, 0);
+      o += r(x, 16, w, 13, '#12121a', 0) + r(x + 8, 20, 30, 4, accent, 1.5) + r(x, 29, w, 1, C.line, 0);
+      o += box(x + 8, 36, w - 16, 30);
+      o += lines(x + 14, 44, w - 28, 2, 8);
+      o += box(x + 8, 72, w - 16, 22);
+      o += r(x + 14, 80, w - 52, 4, C.soft, 1.5) + r(x + w - 34, 78, 26, 8, accent, 2);
+      o += box(x + 8, 100, w - 16, 36);
+      o += lines(x + 14, 108, w - 28, 3, 8);
+      return o;
+    }
+    if (count === 2) {
+      s += column(0, 159, C.accent) + r(159, 16, 1, H, C.line, 0) + column(160, 160, C.ok);
+      s += r(0, 142, W, 10, C.chrome, 0);
+    } else {
+      var accent = side === 'left' ? C.accent : C.ok;
+      s += r(0, 16, 60, H, '#0d0d12', 0) + r(260, 16, 60, H, '#0d0d12', 0) + column(60, 200, accent);
+    }
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice">' + s + '</svg>';
+  }
+
+  var out = '';
+  for (var i = 0; i < SCREENS.length; i++) {
+    var sc = SCREENS[i];
+    out += '<a class="gallery__card" href="' + sc.file + '">' +
+      '<div class="gallery__thumb">' + THUMBS[sc.thumb]() + '</div>' +
+      '<div class="gallery__meta">' +
+      '<span class="gallery__n">' + sc.n + '</span>' +
+      '<div style="min-width:0"><div class="row" style="gap:8px">' +
+      '<span class="t-h3">' + sc.name + '</span>' +
+      (sc.hero ? '<span class="badge badge--accent">Hero</span>' : '') + '</div>' +
+      '<p class="t-xs subtle" style="margin-top:5px">' + sc.desc + '</p></div>' +
+      '<span style="color:var(--n-400);margin-left:auto;align-self:center">' + icon('chevronRight', 16) + '</span>' +
+      '</div></a>';
+  }
+  document.getElementById('grid').innerHTML = out;
+
+  document.getElementById('note').innerHTML = icon('info', 16) +
+    '<div><strong>How the prototype fakes its backend</strong>' +
+    '<span class="muted">All content lives in <span class="mono">data.js</span> as one <span class="mono">CASEGRID_DATA</span> object. ' +
+    '<span class="mono">app.js</span> exposes <span class="mono">FakeAPI</span>, whose methods resolve on a 400 to 900 millisecond timer so skeletons and spinners are genuinely visible. ' +
+    'Mutations - releasing an exhibit, submitting a rubric, spending a credit - write to that object in memory and re-render. ' +
+    'Nothing is stored, so a refresh returns any screen to its seeded state.</span></div>';
+})();
+</script>
+</body>
+</html>
